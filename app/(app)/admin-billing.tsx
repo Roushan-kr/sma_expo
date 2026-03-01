@@ -303,10 +303,22 @@ export default function AdminBillingScreen() {
       const res = await api.get<any>('/api/billing?limit=50', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data: BillingReport[] = res.data?.data ?? res.data ?? [];
+      // Backend: { success, data: { data: BillingReport[], pagination } }
+      // axios wraps body in res.data, so:
+      //   res.data          = { success, data: { data: [], pagination } }
+      //   res.data.data     = { data: [], pagination }   ← object, NOT array
+      //   res.data.data.data = []                        ← actual array
+      const raw = res.data;
+      const inner = raw?.data;
+      const data: BillingReport[] = Array.isArray(inner)
+        ? inner                      // flat { success, data: [] }
+        : Array.isArray(inner?.data)
+          ? inner.data               // paginated { success, data: { data: [], pagination } }
+          : [];
       setReports(data);
-      setTotalRevenue(data.reduce((s, r) => s + r.totalAmount, 0));
-      setTotalUnits(data.reduce((s, r) => s + r.totalUnits, 0));
+      setTotalRevenue(data.reduce((s, r) => s + (r.totalAmount ?? 0), 0));
+      setTotalUnits(data.reduce((s, r) => s + (r.totalUnits ?? 0), 0));
+
     } catch (e: any) {
       setError(e?.response?.data?.error ?? e?.message ?? 'Failed to load billing.');
     } finally {
