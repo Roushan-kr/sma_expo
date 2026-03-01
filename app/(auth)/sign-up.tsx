@@ -1,4 +1,4 @@
-import { useSignIn } from '@clerk/clerk-expo';
+import { useSignUp } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -10,43 +10,42 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { syncUser } from '@/lib/api';
+import { SIGNIN_METHOD } from '@/lib/env';
 
-export default function SignInScreen() {
-  const { signIn, isLoaded } = useSignIn();
+export default function SignUpScreen() {
+  const { signUp, isLoaded } = useSignUp();
   const router = useRouter();
 
-  // Shared state
   const [input, setInput] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [password, setPassword] = useState('');
-  const handleSend = async () => {
+  const handleSignUp = async () => {
     if (!isLoaded) return;
     if (!input.includes('@')) {
       setError('Please enter a valid email address.');
       return;
     }
     if (!password || password.length < 4) {
-      setError('Please enter your password.');
+      setError('Please enter a password (min 4 chars).');
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      await signIn.create({
-        identifier: input,
+      await signUp.create({
+        emailAddress: input,
         password,
-        strategy: 'password',
       });
-      // On success, sync user and route to dashboard
-      router.replace('/(app)/dashboard');
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      // On success, route to sign-in for login
+      router.replace('/(auth)/sign-in');
     } catch (err: any) {
       const message =
         err?.errors?.[0]?.longMessage ??
         err?.errors?.[0]?.message ??
-        'Failed to sign in. Please check your credentials.';
+        'Failed to sign up. Please try again.';
       setError(message);
     } finally {
       setLoading(false);
@@ -61,10 +60,8 @@ export default function SignInScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View className="flex-1 justify-center px-7 gap-4">
-        <Text className="text-4xl font-bold text-slate-50 mb-1">Welcome</Text>
-        <Text className="text-base text-slate-400 mb-2">
-          Enter your email and password to sign in
-        </Text>
+        <Text className="text-4xl font-bold text-slate-50 mb-1">Create Account</Text>
+        <Text className="text-base text-slate-400 mb-2">Enter your email and password to sign up</Text>
 
         <View className="border border-slate-700 rounded-xl bg-slate-800 px-4 py-3 mb-2">
           <TextInput
@@ -97,7 +94,7 @@ export default function SignInScreen() {
             autoComplete="password"
             textContentType="password"
             returnKeyType="done"
-            onSubmitEditing={handleSend}
+            onSubmitEditing={handleSignUp}
             editable={!loading}
           />
         </View>
@@ -108,15 +105,15 @@ export default function SignInScreen() {
 
         <Pressable
           className={`rounded-xl py-4 items-center mt-2 ${disabled ? 'bg-indigo-500 opacity-50' : 'bg-indigo-500'}`}
-          onPress={handleSend}
+          onPress={handleSignUp}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel="Sign In"
+          accessibilityLabel="Sign Up"
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white text-base font-semibold">Sign In</Text>
+            <Text className="text-white text-base font-semibold">Sign Up</Text>
           )}
         </Pressable>
       </View>
