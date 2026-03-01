@@ -1,23 +1,15 @@
 import { create } from 'zustand';
-
 import { api } from '@/lib/api';
-import type {
-  Consumer,
-  User,
-  ROLE_TYPE as ApiRoleType,
-} from '../types/api.types';
+import type { User, ROLE_TYPE as ApiRoleType } from '../types/api.types';
 
-// ─── Enums (match Prisma schema exactly) ──────────────────────────────────────
-
-// Use RoleType from API types for consistency
+// ─── Enums ────────────────────────────────────────────────────────────────────
 export type RoleType = ApiRoleType;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-// UserProfile is now based on Consumer from API types
-export interface UserProfile extends Consumer {
+// UserProfile is the admin User model from the backend
+export interface UserProfile extends User {
   clerkUserId?: string | null;
-  role?: RoleType;
 }
 
 interface UserState {
@@ -38,12 +30,19 @@ export const useUserStore = create<UserState>((set) => ({
   loadProfile: async (token: string) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.get<UserProfile>('/api/users/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      set({ profile: data, loading: false });
+      // axios wraps response as { data: backendResponse }
+      // backend wraps payload as  { success: true, data: user }
+      // so we need response.data.data to get the actual User row
+      const response = await api.get<{ success: boolean; data: UserProfile }>(
+        '/api/users/me',
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const user = response.data.data;
+      set({ profile: user, loading: false });
     } catch (err: any) {
+      // axios puts the parsed error JSON in err.response.data
       const message =
+        err?.response?.data?.error ??
         err?.response?.data?.message ??
         err?.message ??
         'Failed to load profile.';

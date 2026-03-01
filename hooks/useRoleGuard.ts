@@ -1,10 +1,9 @@
-import { ROLE_TYPE } from '@/types/api.types';
-import { useCurrentRole } from '@/hooks/useRoleBasedView';
-import { useRouter,Href } from 'expo-router';
+import { AppRole, useCurrentRole } from '@/hooks/useRoleBasedView';
+import { useRouter, Href } from 'expo-router';
 import { useEffect } from 'react';
 
 export function useRoleGuard(
-  allowed: ROLE_TYPE[],
+  allowed: AppRole[],
   fallback: Href = '/(auth)/sign-in',
 ) {
   const role = useCurrentRole();
