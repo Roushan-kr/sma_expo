@@ -9,6 +9,17 @@ export interface ApiResponse<T = any> {
   data: T;
   status: number;
 }
+
+export interface PaginatedResponse<T = any> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 // Centralized interfaces for SmartMettr Expo app
 // Generated from OpenAPI and Postman collection
 
@@ -16,7 +27,9 @@ export enum ROLE_TYPE {
   SUPER_ADMIN = 'SUPER_ADMIN',
   STATE_ADMIN = 'STATE_ADMIN',
   BOARD_ADMIN = 'BOARD_ADMIN',
-  CONSUMER = 'CONSUMER',
+  SUPPORT_AGENT = 'SUPPORT_AGENT',
+  AUDITOR = 'AUDITOR',
+  // CONSUMER is a separate model — not a User role
 }
 
 export interface User {
@@ -85,6 +98,15 @@ export interface UpdateConsumerInput {
   address?: string;
 }
 
+export interface CustomerConsent {
+  id: string;
+  consumerId: string;
+  consentType: 'ENERGY_TRACKING' | 'AI_QUERY_PROCESSING';
+  granted: boolean;
+  grantedAt?: string;
+  revokedAt?: string;
+}
+
 export interface SmartMeter {
   id: string;
   meterNumber: string;
@@ -108,23 +130,37 @@ export interface UpdateMeterStatusInput {
   status: 'ACTIVE' | 'INACTIVE' | 'FAULTY' | 'DISCONNECTED';
 }
 
+export interface ConsumptionSummary {
+  meterId: string;
+  totalConsumption: number;
+  averageDailyConsumption: number;
+  peakConsumption: number;
+  readingCount: number;
+}
+
 export interface MeterReading {
   id: string;
   meterId: string;
-  reading: number;
+  consumption: number;   // ← Prisma field name (was 'reading')
   timestamp: string;
+  voltage?: number;
+  current?: number;
 }
 
 export interface BillingReport {
   id: string;
   meterId: string;
+  tariffId: string;
   billingStart: string;
   billingEnd: string;
-  totalConsumption: number;
+  totalUnits: number;    // ← Prisma field name (was 'totalConsumption')
+  energyCharge: number;
+  fixedCharge: number;
+  taxAmount?: number;
   totalAmount: number;
-  status: 'GENERATED' | 'RECALCULATED';
-  createdAt: string;
-  updatedAt: string;
+  version: number;
+  isLatest: boolean;     // ← backend flag (replaced fake 'status' field)
+  generatedAt: string;
 }
 
 export interface GenerateBillingInput {
@@ -145,8 +181,8 @@ export interface Notification {
   consumerId: string;
   title: string;
   message: string;
-  type: 'INFO' | 'ALERT';
-  read: boolean;
+  type: string;          // flexible — backend stores as plain String
+  isRead: boolean;       // ← Prisma field name (was 'read')
   createdAt: string;
 }
 
@@ -154,15 +190,18 @@ export interface CreateNotificationInput {
   consumerId: string;
   title: string;
   message: string;
-  type: 'INFO' | 'ALERT';
+  type: string;
 }
 
 export interface Query {
   id: string;
   consumerId: string;
   queryText: string;
-  status: 'PENDING' | 'RESOLVED' | 'CLOSED';
+  aiCategory?: string;
+  aiConfidence?: number;
+  status: 'PENDING' | 'AI_REVIEWED' | 'RESOLVED' | 'REJECTED'; // ← matches Prisma QueryStatus
   adminReply?: string;
+  reviewedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -172,7 +211,7 @@ export interface CreateQueryInput {
 }
 
 export interface UpdateQueryStatusInput {
-  status: 'PENDING' | 'RESOLVED' | 'CLOSED';
+  status: 'PENDING' | 'AI_REVIEWED' | 'RESOLVED' | 'REJECTED';
 }
 
 export interface AdminReplyInput {
@@ -221,9 +260,11 @@ export interface GenerateReportInput {
 export interface AuditLog {
   id: string;
   action: string;
+  entity: string;
+  entityId: string;
   userId: string;
-  timestamp: string;
-  details: object;
+  createdAt: string;     // ← Prisma field name (was 'timestamp')
+  metadata?: object | null; // ← Prisma field name (was 'details')
 }
 
 export interface DataRetentionPolicy {

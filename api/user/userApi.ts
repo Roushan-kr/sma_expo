@@ -5,17 +5,32 @@ import type {
   CreateUserInput,
   UpdateRoleInput,
   UpdateScopeInput,
+  UpdateConsentInput,
+  UserConsent,
   ApiResponse,
 } from '@/types/api.types';
 
-const BASE_URL = `${process.env.EXPO_PUBLIC_API_BASE_URL}/api/users`;
+const BASE = `/api/users`;
 
 export const UserAPI = {
-  async createUser(
-    input: CreateUserInput,
-    token: string,
-  ): Promise<ApiResponse<User>> {
-    return apiRequest<User>(BASE_URL, {
+  // ── Own profile (signed-in admin) ──────────────────────────────────────────
+
+  async getMe(token: string): Promise<ApiResponse<User>> {
+    return apiRequest<User>(`${BASE}/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async getMeConsents(token: string): Promise<ApiResponse<UserConsent[]>> {
+    return apiRequest<UserConsent[]>(`${BASE}/me/consents`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // ── Admin CRUD ─────────────────────────────────────────────────────────────
+
+  async createUser(input: CreateUserInput, token: string): Promise<ApiResponse<User>> {
+    return apiRequest<User>(BASE, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: input,
@@ -23,7 +38,7 @@ export const UserAPI = {
   },
 
   async getUser(id: string, token: string): Promise<ApiResponse<User>> {
-    return apiRequest<User>(`${BASE_URL}/${id}`, {
+    return apiRequest<User>(`${BASE}/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
@@ -33,7 +48,7 @@ export const UserAPI = {
     input: UpdateRoleInput,
     token: string,
   ): Promise<ApiResponse<User>> {
-    return apiRequest<User>(`${BASE_URL}/${id}/role`, {
+    return apiRequest<User>(`${BASE}/${id}/role`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
       body: input,
@@ -45,20 +60,37 @@ export const UserAPI = {
     input: UpdateScopeInput,
     token: string,
   ): Promise<ApiResponse<User>> {
-    return apiRequest<User>(`${BASE_URL}/${id}/scope`, {
+    return apiRequest<User>(`${BASE}/${id}/scope`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
       body: input,
     });
   },
 
-  async deleteUser(
-    id: string,
-    token: string,
-  ): Promise<ApiResponse<{ success: boolean }>> {
-    return apiRequest<{ success: boolean }>(`${BASE_URL}/${id}`, {
+  async deleteUser(id: string, token: string): Promise<ApiResponse<{ id: string }>> {
+    return apiRequest<{ id: string }>(`${BASE}/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // ── Consents ───────────────────────────────────────────────────────────────
+
+  async listUserConsents(id: string, token: string): Promise<ApiResponse<UserConsent[]>> {
+    return apiRequest<UserConsent[]>(`${BASE}/${id}/consents`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async updateUserConsent(
+    id: string,
+    input: UpdateConsentInput,
+    token: string,
+  ): Promise<ApiResponse<UserConsent>> {
+    return apiRequest<UserConsent>(`${BASE}/${id}/consents`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: input,
     });
   },
 };
