@@ -1,30 +1,22 @@
 import { create } from 'zustand';
+
 import { api } from '@/lib/api';
+import type {
+  Consumer,
+  User,
+  ROLE_TYPE as ApiRoleType,
+} from '../types/api.types';
 
 // ─── Enums (match Prisma schema exactly) ──────────────────────────────────────
 
-export type RoleType =
-  | 'SUPER_ADMIN'
-  | 'STATE_ADMIN'
-  | 'BOARD_ADMIN'
-  | 'SUPPORT_AGENT'
-  | 'AUDITOR';
+// Use RoleType from API types for consistency
+export type RoleType = ApiRoleType;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * Maps to the Consumer model (phone-based login users).
- * Clerk identity is stored as clerkUserId on Consumer, not User.
- */
-export interface UserProfile {
-  id: string;
-  clerkUserId: string | null;
-  name: string;
-  phoneNumber: string | null; // Consumer.phoneNumber
-  stateId: string;
-  boardId: string;
-  address: string;
-  // Role is on the User model; for Consumer we expose it separately via /api/users/me
+// UserProfile is now based on Consumer from API types
+export interface UserProfile extends Consumer {
+  clerkUserId?: string | null;
   role?: RoleType;
 }
 

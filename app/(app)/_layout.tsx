@@ -5,20 +5,52 @@ export default function AppLayout() {
     <Stack>
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
       <Stack.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+        }}
+      />
+      <Stack.Screen
+        name="admin-dashboard"
+        options={{
+          title: 'Admin Dashboard',
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+        }}
+      />
+      <Stack.Screen
         name="meter/[id]"
-        options={{ title: 'Meter Detail', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f8fafc' }}
+        options={{
+          title: 'Meter Detail',
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+        }}
       />
       <Stack.Screen
         name="billing/index"
-        options={{ title: 'Billing History', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f8fafc' }}
+        options={{
+          title: 'Billing History',
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+        }}
       />
       <Stack.Screen
         name="support/index"
-        options={{ title: 'Support', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f8fafc' }}
+        options={{
+          title: 'Support',
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+        }}
       />
       <Stack.Screen
         name="notifications/index"
-        options={{ title: 'Notifications', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f8fafc' }}
+        options={{
+          title: 'Notifications',
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+        }}
       />
     </Stack>
   );
