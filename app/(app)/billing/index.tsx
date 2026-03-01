@@ -1,4 +1,4 @@
-import { useAuth } from '@clerk/clerk-expo';
+import { useStableToken } from '@/hooks/useStableToken';
 import * as Linking from 'expo-linking';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -121,7 +121,7 @@ function BillingCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function BillingScreen() {
-  const { getToken } = useAuth();
+  const getToken = useStableToken();
 
   const [reports, setReports] = useState<BillingReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +142,7 @@ export default function BillingScreen() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, []); // stable token, no dep needed
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 

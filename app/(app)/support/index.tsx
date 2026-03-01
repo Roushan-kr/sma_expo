@@ -1,4 +1,4 @@
-import { useAuth } from '@clerk/clerk-expo';
+import { useStableToken } from '@/hooks/useStableToken';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -100,7 +100,7 @@ function QueryCard({ query }: { query: CustomerQuery }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function SupportScreen() {
-  const { getToken } = useAuth();
+  const getToken = useStableToken();
 
   const [queries, setQueries] = useState<CustomerQuery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,7 +125,7 @@ export default function SupportScreen() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, []); // stable from useStableToken
 
   useEffect(() => { fetchQueries(); }, [fetchQueries]);
 

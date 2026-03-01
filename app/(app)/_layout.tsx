@@ -60,12 +60,17 @@ export default function AppLayout() {
       />
       <Stack.Screen
         name="admin-dashboard"
-        options={{
-          title: 'Admin Dashboard',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-        }}
+        options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="admin-queries"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="admin-billing"
+        options={{ headerShown: false }}
+      />
+
       <Stack.Screen
         name="meter/[id]"
         options={{
