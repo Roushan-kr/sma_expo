@@ -10,18 +10,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { syncUser } from '@/lib/api';
 
 export default function SignInScreen() {
   const { signIn, isLoaded } = useSignIn();
   const router = useRouter();
 
-  // Shared state
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [password, setPassword] = useState('');
+
   const handleSend = async () => {
     if (!isLoaded) return;
     if (!input.includes('@')) {
@@ -35,13 +33,22 @@ export default function SignInScreen() {
     setError(null);
     setLoading(true);
     try {
-      await signIn.create({
+      const result = await signIn.create({
         identifier: input,
         password,
         strategy: 'password',
       });
-      // On success, sync user and route to dashboard
-      router.replace('/(app)/dashboard');
+
+      if (result.status === 'complete') {
+        // No 2FA required — session is active
+        router.replace('/(app)/dashboard');
+      } else if (result.status === 'needs_second_factor') {
+        // 2FA required — prepare the email OTP step then go to verify screen
+        await signIn.prepareSecondFactor({ strategy: 'email_code' });
+        router.push('/(auth)/verify');
+      } else {
+        setError('Unexpected sign-in status: ' + result.status);
+      }
     } catch (err: any) {
       const message =
         err?.errors?.[0]?.longMessage ??
