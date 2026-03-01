@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { api } from '@/lib/api';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
-import { ROLE_TYPE } from '@/types/api.types';
+
 
 // ─── Types (matches Prisma SmartMeter model) ───────────────────────────────────
 
@@ -85,7 +85,8 @@ function MeterCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
-  useRoleGuard([ROLE_TYPE.CONSUMER]);
+  useRoleGuard(['CONSUMER']);
+
 
   const { signOut, getToken, isLoaded } = useAuth();
   const { user } = useUser();
