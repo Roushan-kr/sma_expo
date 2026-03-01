@@ -1,0 +1,112 @@
+import React, { useEffect, useState } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { useConsumerProfileStore } from '@/stores/useConsumerProfileStore';
+import { useAuth } from '@clerk/clerk-expo';
+
+export default function ConsumerProfileScreen() {
+  const { getToken } = useAuth();
+  const { profile, loading, error, loadProfile, updateProfile } =
+    useConsumerProfileStore();
+  const [edit, setEdit] = useState(false);
+  const [form, setForm] = useState({ name: '', address: '', phoneNumber: '' });
+
+  useEffect(() => {
+    getToken().then((token) => {
+      if (token) loadProfile(token);
+    });
+  }, [getToken, loadProfile]);
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        name: profile.name,
+        address: profile.address,
+        phoneNumber: profile.phoneNumber,
+      });
+    }
+  }, [profile]);
+
+  const handleSave = async () => {
+    const token = await getToken();
+    if (!token) return;
+    await updateProfile(form, token);
+    setEdit(false);
+    Alert.alert('Profile updated');
+  };
+
+  if (loading && !profile) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-900">
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-slate-900 px-6 pt-8">
+      <Text className="text-2xl font-bold text-slate-50 mb-4">My Profile</Text>
+      {error ? <Text className="text-red-400 mb-2">{error}</Text> : null}
+      <View className="gap-4">
+        <TextInput
+          className="border border-slate-700 rounded-xl bg-slate-800 px-4 py-3 text-slate-50"
+          value={form.name}
+          editable={edit}
+          onChangeText={(t) => setForm((f) => ({ ...f, name: t }))}
+          placeholder="Name"
+        />
+        <TextInput
+          className="border border-slate-700 rounded-xl bg-slate-800 px-4 py-3 text-slate-50"
+          value={form.address}
+          editable={edit}
+          onChangeText={(t) => setForm((f) => ({ ...f, address: t }))}
+          placeholder="Address"
+        />
+        <TextInput
+          className="border border-slate-700 rounded-xl bg-slate-800 px-4 py-3 text-slate-50"
+          value={form.phoneNumber}
+          editable={false}
+          placeholder="Phone Number"
+        />
+      </View>
+      <View className="flex-row gap-4 mt-8">
+        {edit ? (
+          <>
+            <Pressable
+              className="bg-indigo-500 rounded-xl px-6 py-3 flex-1 items-center"
+              onPress={handleSave}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-semibold">Save</Text>
+              )}
+            </Pressable>
+            <Pressable
+              className="bg-slate-700 rounded-xl px-6 py-3 flex-1 items-center"
+              onPress={() => setEdit(false)}
+              disabled={loading}
+            >
+              <Text className="text-white font-semibold">Cancel</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Pressable
+            className="bg-indigo-500 rounded-xl px-6 py-3 flex-1 items-center"
+            onPress={() => setEdit(true)}
+          >
+            <Text className="text-white font-semibold">Edit Profile</Text>
+          </Pressable>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}

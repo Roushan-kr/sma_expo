@@ -10,54 +10,58 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { syncUser } from '@/lib/api';
+import { SIGNIN_METHOD } from '@/lib/env';
 
 export default function SignInScreen() {
   const { signIn, isLoaded } = useSignIn();
   const router = useRouter();
 
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Shared state
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const formatPhone = (raw: string) => {
-    const stripped = raw.replace(/[^\d+]/g, '');
-    return stripped.startsWith('+') ? stripped : `+${stripped}`;
-  };
+  // Phone/email logic
+  const isEmail = SIGNIN_METHOD;
 
-  const handleSendOTP = async () => {
+  const handleSend = async () => {
     if (!isLoaded) return;
-
-    const formatted = formatPhone(phoneNumber);
-    if (formatted.length < 8) {
-      setError('Please enter a valid phone number with country code.');
-      return;
+    if (isEmail) {
+      if (!input.includes('@')) {
+        setError('Please enter a valid email address.');
+        return;
+      }
+    } else {
+      const stripped = input.replace(/[^\d+]/g, '');
+      if (stripped.length < 8) {
+        setError('Please enter a valid phone number with country code.');
+        return;
+      }
     }
-
     setError(null);
     setLoading(true);
-
     try {
       await signIn.create({
-        strategy: 'phone_code',
-        identifier: formatted,
+        strategy: isEmail ? 'email_code' : 'phone_code',
+        identifier: input,
       });
-
       router.push({
         pathname: '/(auth)/verify',
-        params: { phone: formatted },
+        params: isEmail ? { email: input } : { phone: input },
       });
     } catch (err: any) {
       const message =
         err?.errors?.[0]?.longMessage ??
         err?.errors?.[0]?.message ??
-        'Failed to send OTP. Please try again.';
+        `Failed to send ${isEmail ? 'code' : 'OTP'}. Please try again.`;
       setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const disabled = loading || !phoneNumber;
+  const disabled = loading || !input;
 
   return (
     <KeyboardAvoidingView
@@ -67,24 +71,26 @@ export default function SignInScreen() {
       <View className="flex-1 justify-center px-7 gap-4">
         <Text className="text-4xl font-bold text-slate-50 mb-1">Welcome</Text>
         <Text className="text-base text-slate-400 mb-2">
-          Enter your phone number to continue
+          {isEmail
+            ? 'Enter your email to continue'
+            : 'Enter your phone number to continue'}
         </Text>
 
         <View className="border border-slate-700 rounded-xl bg-slate-800 px-4 py-3">
           <TextInput
             className="text-base text-slate-50"
-            placeholder="+91 98765 43210"
+            placeholder={isEmail ? 'you@email.com' : '+91 98765 43210'}
             placeholderTextColor="#9ca3af"
-            value={phoneNumber}
+            value={input}
             onChangeText={(t) => {
               setError(null);
-              setPhoneNumber(t);
+              setInput(t);
             }}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            textContentType="telephoneNumber"
+            keyboardType={isEmail ? 'email-address' : 'phone-pad'}
+            autoComplete={isEmail ? 'email' : 'tel'}
+            textContentType={isEmail ? 'emailAddress' : 'telephoneNumber'}
             returnKeyType="done"
-            onSubmitEditing={handleSendOTP}
+            onSubmitEditing={handleSend}
             editable={!loading}
           />
         </View>
@@ -95,15 +101,17 @@ export default function SignInScreen() {
 
         <Pressable
           className={`rounded-xl py-4 items-center mt-2 ${disabled ? 'bg-indigo-500 opacity-50' : 'bg-indigo-500'}`}
-          onPress={handleSendOTP}
+          onPress={handleSend}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel="Send OTP"
+          accessibilityLabel={isEmail ? 'Send Code' : 'Send OTP'}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white text-base font-semibold">Send OTP</Text>
+            <Text className="text-white text-base font-semibold">
+              {isEmail ? 'Send Code' : 'Send OTP'}
+            </Text>
           )}
         </Pressable>
       </View>

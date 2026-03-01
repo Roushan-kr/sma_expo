@@ -12,15 +12,15 @@ import {
 } from 'react-native';
 import { syncUser } from '@/lib/api';
 
-const OTP_LENGTH = 6;
+const CODE_LENGTH = 6;
 
 export default function VerifyScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { getToken } = useAuth();
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { email } = useLocalSearchParams<{ email: string }>();
 
-  const [codes, setCodes] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [codes, setCodes] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputs = useRef<(TextInput | null)[]>([]);
@@ -31,7 +31,7 @@ export default function VerifyScreen() {
     next[index] = text.slice(-1);
     setCodes(next);
     setError(null);
-    if (text && index < OTP_LENGTH - 1) inputs.current[index + 1]?.focus();
+    if (text && index < CODE_LENGTH - 1) inputs.current[index + 1]?.focus();
   };
 
   const handleKeyPress = (key: string, index: number) => {
@@ -46,12 +46,12 @@ export default function VerifyScreen() {
   const fullCode = codes.join('');
 
   const handleVerify = async () => {
-    if (!isLoaded || fullCode.length < OTP_LENGTH) return;
+    if (!isLoaded || fullCode.length < CODE_LENGTH) return;
     setError(null);
     setLoading(true);
     try {
       const result = await signIn.attemptFirstFactor({
-        strategy: 'phone_code',
+        strategy: 'email_code',
         code: fullCode,
       });
       if (result.status === 'complete') {
@@ -78,21 +78,23 @@ export default function VerifyScreen() {
   };
 
   const handleResend = async () => {
-    if (!isLoaded || !phone) return;
+    if (!isLoaded || !email) return;
     setError(null);
     setLoading(true);
     try {
-      await signIn.create({ strategy: 'phone_code', identifier: phone });
-      setCodes(Array(OTP_LENGTH).fill(''));
+      await signIn.create({ strategy: 'email_code', identifier: email });
+      setCodes(Array(CODE_LENGTH).fill(''));
       inputs.current[0]?.focus();
     } catch (err: any) {
-      setError(err?.errors?.[0]?.message ?? 'Failed to resend OTP. Please try again.');
+      setError(
+        err?.errors?.[0]?.message ?? 'Failed to resend code. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const verifyDisabled = loading || fullCode.length < OTP_LENGTH;
+  const verifyDisabled = loading || fullCode.length < CODE_LENGTH;
 
   return (
     <KeyboardAvoidingView
@@ -109,19 +111,21 @@ export default function VerifyScreen() {
         </Pressable>
 
         <Text className="text-3xl font-bold text-slate-50 mb-1">
-          Verify your number
+          Verify your email
         </Text>
         <Text className="text-sm text-slate-400 leading-5 mb-2">
           Enter the 6-digit code sent to{' '}
-          <Text className="text-indigo-200 font-semibold">{phone}</Text>
+          <Text className="text-indigo-200 font-semibold">{email}</Text>
         </Text>
 
-        {/* OTP boxes */}
+        {/* Code boxes */}
         <View className="flex-row justify-between gap-2 my-2">
           {codes.map((digit, i) => (
             <TextInput
               key={i}
-              ref={(el) => { inputs.current[i] = el; }}
+              ref={(el) => {
+                inputs.current[i] = el;
+              }}
               className={`flex-1 h-14 rounded-xl text-center text-2xl font-bold text-slate-50 ${
                 digit
                   ? 'border-2 border-indigo-500 bg-slate-800'
@@ -129,7 +133,9 @@ export default function VerifyScreen() {
               }`}
               value={digit}
               onChangeText={(t) => handleChange(t, i)}
-              onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
+              onKeyPress={({ nativeEvent }) =>
+                handleKeyPress(nativeEvent.key, i)
+              }
               keyboardType="number-pad"
               maxLength={1}
               textAlign="center"
@@ -148,7 +154,7 @@ export default function VerifyScreen() {
           onPress={handleVerify}
           disabled={verifyDisabled}
           accessibilityRole="button"
-          accessibilityLabel="Verify OTP"
+          accessibilityLabel="Verify Code"
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -163,7 +169,7 @@ export default function VerifyScreen() {
           disabled={loading}
         >
           <Text className="text-indigo-400 text-sm">
-            Didn't receive a code? Resend
+            Didn&apos;t receive a code? Resend
           </Text>
         </Pressable>
       </View>

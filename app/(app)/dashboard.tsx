@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { api } from '@/lib/api';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
+import { ROLE_TYPE } from '@/types/api.types';
 
 // ─── Types (matches Prisma SmartMeter model) ───────────────────────────────────
 
@@ -73,9 +75,7 @@ function MeterCard({
       <Text className="text-slate-400 text-sm">
         Last reading:{' '}
         <Text className="text-slate-200 font-medium">
-          {lastKwh !== undefined && lastKwh !== null
-            ? `${lastKwh} kWh`
-            : '—'}
+          {lastKwh !== undefined && lastKwh !== null ? `${lastKwh} kWh` : '—'}
         </Text>
       </Text>
     </Pressable>
@@ -85,6 +85,8 @@ function MeterCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
+  useRoleGuard([ROLE_TYPE.CONSUMER]);
+
   const { signOut, getToken, isLoaded } = useAuth();
   const { user } = useUser();
   const router = useRouter();
@@ -105,7 +107,9 @@ export default function DashboardScreen() {
       setMeters(data);
     } catch (err: any) {
       setMetersError(
-        err?.response?.data?.message ?? err?.message ?? 'Failed to load meters.'
+        err?.response?.data?.message ??
+          err?.message ??
+          'Failed to load meters.',
       );
     } finally {
       setMetersLoading(false);
@@ -145,23 +149,42 @@ export default function DashboardScreen() {
           <Text className="text-slate-400 text-sm">Signed in as</Text>
           <Text className="text-slate-50 font-semibold text-base">{phone}</Text>
         </View>
-        <Pressable
-          className={`border border-indigo-600 rounded-xl px-4 py-2 ${signingOut ? 'opacity-50' : 'opacity-100'}`}
-          onPress={handleSignOut}
-          disabled={signingOut}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-        >
-          {signingOut ? (
-            <ActivityIndicator color="#6366f1" size="small" />
-          ) : (
-            <Text className="text-indigo-400 font-semibold text-sm">Sign Out</Text>
-          )}
-        </Pressable>
+        <View className="flex-row gap-2">
+          <Pressable
+            className="border border-indigo-600 rounded-xl px-4 py-2"
+            onPress={() => router.push({
+              pathname: '/(app)/dashboard',
+              params: { tab: 'profile' },
+            })}
+            accessibilityRole="button"
+            accessibilityLabel="Profile"
+          >
+            <Text className="text-indigo-400 font-semibold text-sm">
+              Profile
+            </Text>
+          </Pressable>
+          <Pressable
+            className={`border border-indigo-600 rounded-xl px-4 py-2 ${signingOut ? 'opacity-50' : 'opacity-100'}`}
+            onPress={handleSignOut}
+            disabled={signingOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+          >
+            {signingOut ? (
+              <ActivityIndicator color="#6366f1" size="small" />
+            ) : (
+              <Text className="text-indigo-400 font-semibold text-sm">
+                Sign Out
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </View>
 
       <View className="px-5 pb-3">
-        <Text className="text-2xl font-bold text-slate-50">My Smart Meters</Text>
+        <Text className="text-2xl font-bold text-slate-50">
+          My Smart Meters
+        </Text>
       </View>
 
       <View className="flex-1 px-5">
@@ -172,7 +195,9 @@ export default function DashboardScreen() {
           </View>
         ) : metersError ? (
           <View className="flex-1 items-center justify-center gap-3">
-            <Text className="text-red-400 text-sm text-center">{metersError}</Text>
+            <Text className="text-red-400 text-sm text-center">
+              {metersError}
+            </Text>
             <Pressable
               className="bg-indigo-500 rounded-xl px-5 py-2.5"
               onPress={fetchMeters}
