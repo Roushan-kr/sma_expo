@@ -55,31 +55,106 @@ function StatusBadge({ status }: { status: MeterStatus }) {
   );
 }
 
+import Svg, { Rect, G, Text as SvgText, Line } from 'react-native-svg';
+
+function MeterConsumptionChart({ consumption = 0 }: { consumption: number }) {
+  // A tiny decorative bar chart since we only have `lastReading.consumption` 
+  // in the summary view (unless we fetch /aggregates per meter, which is heavy).
+  // We'll just show a visual representation of the current consumption vs a baseline.
+  const baseline = 20; // assumed avg daily
+  const max = Math.max(consumption, baseline * 1.5, 10);
+  const W = 100;
+  const H = 40;
+  const barW = (consumption / max) * W;
+  const baseW = (baseline / max) * W;
+
+  return (
+    <View className="mt-2 mb-1">
+      <Text className="text-[10px] text-slate-500 mb-1 rounded font-medium uppercase tracking-wider">
+        Current Usage vs Avg
+      </Text>
+      <Svg width={W} height={H} className="rounded-lg overflow-hidden">
+        {/* Baseline marker */}
+        <Line x1={baseW} y1={0} x2={baseW} y2={H} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2,2" />
+        
+        {/* Consumption bar */}
+        <Rect x={0} y={H / 4} width={barW} height={H / 2} fill="#6366f1" rx={4} />
+      </Svg>
+    </View>
+  );
+}
+
 function MeterCard({
   meter,
   onPress,
 }: {
-  meter: SmartMeter;
+  meter: SmartMeter & { tariff?: any }; // Extend type to include tariff
   onPress: () => void;
 }) {
   const lastKwh = meter.lastReading?.consumption;
+  const tariff = meter.tariff;
+
   return (
     <Pressable
-      className="bg-slate-800 rounded-2xl p-4 mb-3 gap-2 active:opacity-80"
+      className="bg-slate-800 border border-slate-700/50 rounded-2xl overflow-hidden mb-4 active:opacity-80"
       onPress={onPress}
     >
-      <View className="flex-row items-center justify-between">
-        <Text className="text-slate-50 font-semibold text-base">
-          {meter.meterNumber}
-        </Text>
+      {/* Header: Meter Number & Status */}
+      <View className="p-4 bg-slate-800/80 border-b border-slate-700/50 flex-row items-center justify-between">
+        <View>
+          <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+            METER
+          </Text>
+          <Text className="text-slate-50 font-mono text-lg font-bold">
+            {meter.meterNumber}
+          </Text>
+        </View>
         <StatusBadge status={meter.status} />
       </View>
-      <Text className="text-slate-400 text-sm">
-        Last reading:{' '}
-        <Text className="text-slate-200 font-medium">
-          {lastKwh !== undefined && lastKwh !== null ? `${lastKwh} kWh` : '—'}
-        </Text>
-      </Text>
+
+      {/* Body: Stats, Graph, Tariff */}
+      <View className="p-4">
+        <View className="flex-row justify-between items-end mb-4">
+          <View>
+            <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+              Latest Reading
+            </Text>
+            <View className="flex-row items-baseline gap-1">
+              <Text className="text-3xl font-black text-indigo-400">
+                {lastKwh !== undefined && lastKwh !== null ? lastKwh : '—'}
+              </Text>
+              <Text className="text-xs font-semibold text-slate-500">kWh</Text>
+            </View>
+          </View>
+          
+          {/* Decorative mini-chart based on lastKwh */}
+          {lastKwh !== undefined && lastKwh !== null && (
+             <MeterConsumptionChart consumption={lastKwh} />
+          )}
+        </View>
+
+        {/* Tariff Details */}
+        {tariff ? (
+          <View className="bg-slate-900/40 rounded-xl p-3 border border-slate-700/30 w-full mt-2">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Plan</Text>
+              <Text className="text-xs text-slate-300 font-bold">{tariff.type}</Text>
+            </View>
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <Text className="text-[11px] text-slate-400 font-medium tracking-wide">Unit Rate: <Text className="font-bold text-slate-200">₹{tariff.unitRate}</Text></Text>
+              </View>
+              <View className="flex-row items-center gap-1.5">
+                <View className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <Text className="text-[11px] text-slate-400 font-medium tracking-wide">Fixed: <Text className="font-bold text-slate-200">₹{tariff.fixedCharge}</Text></Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <Text className="text-[11px] text-slate-500 italic mt-2">No active tariff plan assigned</Text>
+        )}
+      </View>
     </Pressable>
   );
 }
