@@ -1,5 +1,8 @@
 // Common API utility for HTTP requests with type safety
 import { ApiRequestOptions, ApiResponse } from '@/types/api.types';
+import { logger } from '@/lib/logger';
+import { sanitizeError } from '@/utils/error-sanitizer';
+import { showMessage } from 'react-native-flash-message';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
 
@@ -18,7 +21,6 @@ export async function apiRequest<T = any>(
     skeletonFallback
   } = options;
 
-  // Allow callers to pass a full URL (http://...) or just a path (/api/...)
   const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
 
   const fetchOptions: RequestInit = {
@@ -30,35 +32,57 @@ export async function apiRequest<T = any>(
     ...(body ? { body: JSON.stringify(body) } : {}),
   };
 
-  let lastError: Error | null = null;
+  let lastError: any = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) {
-        // Exponential backoff: 500ms -> 1000ms -> 2000ms
         const backoff = retryDelayMs * Math.pow(2, attempt - 1);
-        console.log(`[apiRequest] Retrying ${method} ${path} (Attempt ${attempt}/${retries}) in ${backoff}ms...`);
+        logger.info(`Retrying ${method} ${path} (Attempt ${attempt}/${retries}) in ${backoff}ms...`);
         await delay(backoff);
       }
 
       const response = await fetch(url, fetchOptions);
-      const json = await response.json();
-
-      if (!response.ok) {
-        // Backend wraps errors as { success: false, error: '...' }
-        throw new Error(json.error ?? json.message ?? `HTTP ${response.status}`);
+      
+      let json: any;
+      try {
+        json = await response.json();
+      } catch (e) {
+        throw new Error(`Invalid JSON response from server (HTTP ${response.status})`);
       }
 
-      // Backend wraps successes as { success: true, data: T }
+      if (!response.ok) {
+        const errorMsg = json.error ?? json.message ?? `HTTP ${response.status}`;
+        throw { message: errorMsg, status: response.status, data: json };
+      }
+
       const data: T = json.data !== undefined ? json.data : json;
       return { data, status: response.status };
 
     } catch (err: any) {
       lastError = err;
-      // If it's the last attempt and we have a fallback, return it gracefully
-      if (attempt === retries && skeletonFallback !== undefined) {
-        console.warn(`[apiRequest] All retries failed for ${method} ${path}. Using skeletonFallback.`, err.message);
-        return { data: skeletonFallback as T, status: 503 };
+      
+      // If it's the last attempt, handle the error gracefully or notify the user
+      if (attempt === retries) {
+        const sanitized = sanitizeError(err);
+        
+        logger.error(`API Request Failed: ${method} ${path}`, err, { sanitized });
+
+        if (skeletonFallback !== undefined) {
+          logger.warn(`Using skeletonFallback for ${method} ${path}`);
+          return { data: skeletonFallback as T, status: err.status || 503 };
+        }
+
+        // Show toast notification
+        showMessage({
+          message: sanitized.message,
+          type: 'danger',
+          icon: 'danger',
+          duration: 4000,
+        });
+
+        // Re-throw with sanitization info
+        throw { ...err, message: sanitized.message, raw: err };
       }
     }
   }

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
+import { logger } from '@/lib/logger';
 
 export type QueryStatus = 'PENDING' | 'AI_REVIEWED' | 'RESOLVED' | 'REJECTED';
 
@@ -64,13 +65,13 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   fetchQueries: async (token, status) => {
     set({ loading: true, error: null });
     try {
-      const url = status ? `/api/queries?status=${status}` : '/api/queries';
-      const { data } = await api.get<{ data: CustomerQuery[] }>(url, {
+      const path = status ? `/api/queries?status=${status}` : '/api/queries';
+      const { data } = await apiRequest<{ data: CustomerQuery[] }>(path, {
         headers: { Authorization: `Bearer ${token}` },
       });
       set({ queries: data.data || [] });
     } catch (err: any) {
-      set({ error: err?.response?.data?.message || err.message || 'Failed to fetch queries' });
+      set({ error: err.message || 'Failed to fetch queries' });
     } finally {
       set({ loading: false });
     }
@@ -79,12 +80,12 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   fetchQueryById: async (token, id) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.get<CustomerQuery>(`/api/queries/${id}`, {
+      const { data } = await apiRequest<CustomerQuery>(`/api/queries/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       set({ selectedQuery: data });
     } catch (err: any) {
-      set({ error: err?.response?.data?.message || err.message || 'Failed to fetch query' });
+      set({ error: err.message || 'Failed to fetch query' });
     } finally {
       set({ loading: false });
     }
@@ -93,15 +94,12 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   approveAI: async (token, id) => {
     set({ loading: true, error: null });
     try {
-      // The AI process uses auto-resolve internally if confidence > 0.85, 
-      // but if a human approves an ALREADY classified ticket, they just
-      // submit it back via the reply endpoint using the suggestion text,
-      // or we can hit the status endpoint.
-      // Wait, let's use the explicit `reply` endpoint, which auto-resolves.
       const query = get().selectedQuery;
       if (!query || !query.adminReply) throw new Error("No AI suggestion to approve");
 
-      await api.patch(`/api/queries/${id}/reply`, { reply: query.adminReply }, {
+      await apiRequest(`/api/queries/${id}/reply`, {
+        method: 'PATCH',
+        body: { reply: query.adminReply },
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -110,8 +108,9 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
         selectedQuery: state.selectedQuery ? { ...state.selectedQuery, status: 'RESOLVED' } : null,
         queries: state.queries.map(q => q.id === id ? { ...q, status: 'RESOLVED' } : q)
       }));
+      logger.info('AI Review approved');
     } catch (err: any) {
-      set({ error: err?.response?.data?.message || err.message || 'Failed to approve AI' });
+      set({ error: err.message || 'Failed to approve AI' });
     } finally {
       set({ loading: false });
     }
@@ -120,7 +119,9 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   resolveWithEdit: async (token, id, reply) => {
     set({ loading: true, error: null });
     try {
-      await api.patch(`/api/queries/${id}/reply`, { reply }, {
+      await apiRequest(`/api/queries/${id}/reply`, {
+        method: 'PATCH',
+        body: { reply },
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -128,8 +129,9 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
         selectedQuery: state.selectedQuery ? { ...state.selectedQuery, status: 'RESOLVED', adminReply: reply } : null,
         queries: state.queries.map(q => q.id === id ? { ...q, status: 'RESOLVED', adminReply: reply } : q)
       }));
+      logger.info('Query resolved with edit');
     } catch (err: any) {
-      set({ error: err?.response?.data?.message || err.message || 'Failed to resolve query' });
+      set({ error: err.message || 'Failed to resolve query' });
     } finally {
       set({ loading: false });
     }
@@ -138,7 +140,9 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   rejectQuery: async (token, id) => {
     set({ loading: true, error: null });
     try {
-      await api.patch(`/api/queries/${id}/status`, { status: 'REJECTED' }, {
+      await apiRequest(`/api/queries/${id}/status`, {
+        method: 'PATCH',
+        body: { status: 'REJECTED' },
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -146,8 +150,9 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
         selectedQuery: state.selectedQuery ? { ...state.selectedQuery, status: 'REJECTED' } : null,
         queries: state.queries.map(q => q.id === id ? { ...q, status: 'REJECTED' } : q)
       }));
+      logger.info('Query rejected');
     } catch (err: any) {
-      set({ error: err?.response?.data?.message || err.message || 'Failed to reject query' });
+      set({ error: err.message || 'Failed to reject query' });
     } finally {
       set({ loading: false });
     }

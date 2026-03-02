@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
 import { ROLE_TYPE, User, Consumer } from '@/types/api.types';
+import { logger } from '@/lib/logger';
 
 export type AppRole = ROLE_TYPE | 'CONSUMER';
 
@@ -26,11 +27,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   syncProfile: async (token: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.post('/api/auth/sync', {}, {
+      const response = await apiRequest('/api/auth/sync', {
+        method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      const { role, profile } = response.data.data;
+      const { role, profile } = response.data;
       
       set({ 
         role, 
@@ -38,8 +40,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         loading: false, 
         isLoaded: true 
       });
+      logger.info('Auth profile synced successfully', { role });
     } catch (err: any) {
-      console.error('Auth sync failed:', err);
       set({ 
         error: err?.message || 'Failed to sync auth profile', 
         loading: false,
@@ -54,14 +56,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       const isConsumer = useAuthStore.getState().role === 'CONSUMER';
       const endpoint = isConsumer ? '/api/consumers/me' : '/api/users/me';
       
-      const response = await api.patch(endpoint, input, {
+      const response = await apiRequest(endpoint, {
+        method: 'PATCH',
+        body: input,
         headers: { Authorization: `Bearer ${token}` }
       });
       
       set({ 
-        profile: response.data.data, 
+        profile: response.data, 
         loading: false 
       });
+      logger.info('Profile updated successfully');
     } catch (err: any) {
       set({ 
         error: err?.message || 'Failed to update profile', 

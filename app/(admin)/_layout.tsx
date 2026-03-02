@@ -10,15 +10,7 @@ import { Permission, hasPermission } from '@/constants/permissions';
 
 export default function AdminLayout() {
   const { isSignedIn, getToken } = useAuth();
-  const { profile, role, loading, error, syncProfile } = useAuthStore();
-
-  useEffect(() => {
-    if (isSignedIn && !profile && !loading && !error) {
-      getToken().then(token => {
-        if (token) syncProfile(token);
-      });
-    }
-  }, [isSignedIn, profile, loading, error, getToken, syncProfile]);
+  const { profile, role, loading, error } = useAuthStore();
 
   const isBootstrapping = isSignedIn && !profile && loading && !error;
 

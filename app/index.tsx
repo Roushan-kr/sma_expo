@@ -13,38 +13,14 @@ export default function LandingPage() {
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    async function handleAuth() {
-      if (isLoaded && isSignedIn) {
-        setRedirecting(true);
-        try {
-          const token = await getToken();
-          if (!token) {
-            setRedirecting(false);
-            return;
-          }
-
-          // Unified sync
-          await syncProfile(token);
-          
-          const currentRole = useAuthStore.getState().role;
-
-          if (currentRole === 'CONSUMER') {
-            router.replace('/dashboard' as any);
-          } else if (currentRole) {
-            router.replace('/admin-dashboard' as any);
-          } else {
-            console.warn('User signed in but no role found. Registration may be required.');
-            setRedirecting(false);
-          }
-        } catch (err) {
-          console.error('Auth redirection error:', err);
-          setRedirecting(false);
-        }
+    if (isLoaded && isSignedIn && storeLoaded && role) {
+      if (role === 'CONSUMER') {
+        router.replace('/dashboard' as any);
+      } else {
+        router.replace('/admin-dashboard' as any);
       }
     }
-
-    handleAuth();
-  }, [isLoaded, isSignedIn, router, getToken, syncProfile]);
+  }, [isLoaded, isSignedIn, role, storeLoaded, router]);
 
   if (!isLoaded || (isSignedIn && redirecting)) {
     return (

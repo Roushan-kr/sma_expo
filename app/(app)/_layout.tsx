@@ -9,15 +9,7 @@ import { useEffect } from 'react';
 
 export default function AppLayout() {
   const { isSignedIn, getToken } = useAuth();
-  const { profile, loading, error, syncProfile, role } = useAuthStore();
-
-  useEffect(() => {
-    if (isSignedIn && !profile && !loading && !error) {
-      getToken().then(token => {
-        if (token) syncProfile(token);
-      });
-    }
-  }, [isSignedIn, profile, loading, error, getToken, syncProfile]);
+  const { profile, loading, error, role } = useAuthStore();
 
   const isBootstrapping = isSignedIn && role === null && loading && !error;
 

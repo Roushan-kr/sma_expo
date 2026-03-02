@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { apiRequest } from '@/api/common/apiRequest';
 import type { SmartMeter } from '@/types/api.types';
+import { logger } from '@/lib/logger';
 
 export interface MeterStoreState {
   meters: SmartMeter[];
@@ -16,7 +17,6 @@ export const useMeterStore = create<MeterStoreState>((set, get) => ({
   error: null,
 
   loadMeters: async (token: string) => {
-    // Avoid re-fetching if already loading
     if (get().loading) return;
 
     set({ loading: true, error: null });
@@ -24,13 +24,11 @@ export const useMeterStore = create<MeterStoreState>((set, get) => ({
     try {
       const { data } = await apiRequest<SmartMeter[]>('/api/smart-meters', {
         headers: { Authorization: `Bearer ${token}` },
-        // Return an empty array on failure instead of throwing to avoid UI crashes
         skeletonFallback: [],
       });
       set({ meters: data, loading: false });
+      logger.info('Meters loaded successfully');
     } catch (err: any) {
-      // With retries and skeletonFallback, it should rarely reach here
-      // unless skeletonFallback is explicitly undefined.
       set({ 
         error: err?.message || 'Failed to load meters', 
         loading: false 
