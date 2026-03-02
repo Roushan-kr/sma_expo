@@ -41,11 +41,11 @@ export default function SignInScreen() {
 
       if (result.status === 'complete') {
         // No 2FA required — session is active
-        router.replace('/(app)/dashboard');
+        router.replace('/');
       } else if (result.status === 'needs_second_factor') {
         // 2FA required — prepare the email OTP step then go to verify screen
         await signIn.prepareSecondFactor({ strategy: 'email_code' });
-        router.push('/(auth)/verify');
+        router.push('/verify' as any);
       } else {
         setError('Unexpected sign-in status: ' + result.status);
       }

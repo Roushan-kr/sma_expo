@@ -260,7 +260,7 @@ export default function MeterDetailScreen() {
       {/* Billing link */}
       <Pressable
         className="mt-6 bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-4 flex-row items-center justify-between"
-        onPress={() => router.push('/(app)/billing')}
+        onPress={() => router.push('/billing' as any)}
       >
         <View>
           <Text className="text-slate-50 font-semibold text-sm">Billing History</Text>

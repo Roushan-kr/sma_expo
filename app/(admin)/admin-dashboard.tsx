@@ -582,12 +582,12 @@ export default function AdminDashboardScreen() {
                   label="Queries"
                   badge={stats.pendingQueries}
                   badgeColor={C.amber}
-                  onPress={() => router.push('/(app)/admin-queries')}
+                  onPress={() => router.push('/admin-queries' as any)}
                 />
                 <ActionTile
                   icon="🧾"
                   label="Billing"
-                  onPress={() => router.push('/(app)/admin-billing')}
+                  onPress={() => router.push('/admin-billing' as any)}
                 />
               </View>
             </View>

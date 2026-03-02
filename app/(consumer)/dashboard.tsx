@@ -146,7 +146,7 @@ export default function DashboardScreen() {
           <Pressable
             className="border border-indigo-600 rounded-xl px-4 py-2"
             onPress={() => router.push({
-              pathname: '/(app)/dashboard',
+              pathname: '/dashboard' as any,
               params: { tab: 'profile' },
             })}
             accessibilityRole="button"
@@ -217,7 +217,7 @@ export default function DashboardScreen() {
             renderItem={({ item }) => (
               <MeterCard
                 meter={item}
-                onPress={() => router.push(`/(app)/meter/${item.id}`)}
+                onPress={() => router.push(`/meter/${item.id}` as any)}
               />
             )}
             showsVerticalScrollIndicator={false}

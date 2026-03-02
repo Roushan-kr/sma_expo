@@ -15,19 +15,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useStableToken } from '@/hooks/useStableToken';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
 import { ROLE_TYPE } from '@/types/api.types';
-import { useAdminQueryStore } from '@/stores/useAdminQueryStore';
-import { StatusBadge } from '../admin-dashboard';
+import { useAdminQueryStore, STATUS_META, C } from '@/stores/useAdminQueryStore';
+import { StatusBadge } from '../admin-queries';
 
-const C = {
-  bg: '#0f172a',
-  surface: '#1e293b',
-  indigo: '#6366f1',
-  text: '#f8fafc',
-  muted: '#94a3b8',
-  dim: '#475569',
-  green: '#10b981',
-  red: '#ef4444',
-};
+
 
 export default function QueryDetailScreen() {
   useRoleGuard([
@@ -116,7 +107,7 @@ export default function QueryDetailScreen() {
   if (error || !selectedQuery) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: C.red }}>{error || 'Query not found'}</Text>
+        <Text style={{ color: C.rose }}>{error || 'Query not found'}</Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
           <Text style={{ color: C.indigo }}>Go Back</Text>
         </Pressable>
@@ -205,7 +196,7 @@ export default function QueryDetailScreen() {
           {/* Already resolved view just shows the final admin reply statically */}
           {isResolved && (
             <View style={{ backgroundColor: C.surface, padding: 16, borderRadius: 12, marginBottom: 24 }}>
-              <Text style={{ color: C.green, fontSize: 12, marginBottom: 8, fontWeight: '700' }}>FINAL ADMIN REPLY</Text>
+              <Text style={{ color: C.emerald, fontSize: 12, marginBottom: 8, fontWeight: '700' }}>FINAL ADMIN REPLY</Text>
               <Text style={{ color: C.text, fontSize: 14 }}>{selectedQuery.adminReply || 'No reply provided.'}</Text>
             </View>
           )}
@@ -238,7 +229,7 @@ export default function QueryDetailScreen() {
                 onPress={handleReject}
                 style={{ padding: 16, alignItems: 'center' }}
               >
-                <Text style={{ color: C.red, fontSize: 15, fontWeight: '600' }}>Reject Query</Text>
+                <Text style={{ color: C.rose, fontSize: 15, fontWeight: '600' }}>Reject Query</Text>
               </Pressable>
             </View>
           )}

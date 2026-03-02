@@ -36,13 +36,7 @@ export const useUserStore = create<UserState>((set) => ({
       });
       set({ profile: data, loading: false });
     } catch (err: any) {
-      // axios puts the parsed error JSON in err.response.data
-      const message =
-        err?.response?.data?.error ??
-        err?.response?.data?.message ??
-        err?.message ??
-        'Failed to load profile.';
-      set({ error: message, loading: false });
+      set({ error: err?.message || 'Failed to load profile.', loading: false });
     }
   },
 

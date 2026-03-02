@@ -14,10 +14,32 @@ export interface CustomerQuery {
   reviewedBy: string | null;
   createdAt: string;
   updatedAt: string;
-  consumer: {
+  consumer?: {
     name: string;
+    phoneNumber?: string;
   };
 }
+
+export const C = {
+  bg: '#0f172a',
+  surface: '#1e293b',
+  surface2: '#273549',
+  indigo: '#6366f1',
+  emerald: '#10b981',
+  amber: '#f59e0b',
+  rose: '#f43f5e',
+  blue: '#3b82f6',
+  text: '#f8fafc',
+  muted: '#94a3b8',
+  dim: '#475569',
+};
+
+export const STATUS_META: Record<QueryStatus, { label: string; bg: string; fg: string }> = {
+  PENDING:     { label: 'Pending',     bg: '#f59e0b22', fg: C.amber },
+  AI_REVIEWED: { label: 'AI Reviewed', bg: '#3b82f622', fg: C.blue },
+  RESOLVED:    { label: 'Resolved',    bg: '#10b98122', fg: C.emerald },
+  REJECTED:    { label: 'Rejected',    bg: '#f43f5e22', fg: C.rose },
+};
 
 interface AdminQueryState {
   queries: CustomerQuery[];

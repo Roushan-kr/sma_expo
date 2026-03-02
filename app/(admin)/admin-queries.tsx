@@ -25,48 +25,9 @@ import { api } from '@/lib/api';
 import { ROLE_TYPE } from '@/types/api.types';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { useAdminQueryStore, type QueryStatus, type CustomerQuery, STATUS_META, C } from '@/stores/useAdminQueryStore';
 
-type QueryStatus = 'PENDING' | 'AI_REVIEWED' | 'RESOLVED' | 'REJECTED';
-
-interface CustomerQuery {
-  id: string;
-  consumerId: string;
-  queryText: string;
-  aiCategory: string | null;
-  aiConfidence: number | null;
-  status: QueryStatus;
-  adminReply: string | null;
-  reviewedBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-  consumer?: { name: string; phoneNumber?: string };
-}
-
-// ─── Colours ──────────────────────────────────────────────────────────────────
-
-const C = {
-  bg: '#0f172a',
-  surface: '#1e293b',
-  surface2: '#273549',
-  indigo: '#6366f1',
-  emerald: '#10b981',
-  amber: '#f59e0b',
-  rose: '#f43f5e',
-  blue: '#3b82f6',
-  text: '#f8fafc',
-  muted: '#94a3b8',
-  dim: '#475569',
-};
-
-const STATUS_META: Record<QueryStatus, { label: string; bg: string; fg: string }> = {
-  PENDING:     { label: 'Pending',     bg: '#f59e0b22', fg: C.amber },
-  AI_REVIEWED: { label: 'AI Reviewed', bg: '#3b82f622', fg: C.blue },
-  RESOLVED:    { label: 'Resolved',    bg: '#10b98122', fg: C.emerald },
-  REJECTED:    { label: 'Rejected',    bg: '#f43f5e22', fg: C.rose },
-};
-
-const FILTERS: { label: string; value: QueryStatus | 'ALL' }[] = [
+export const FILTERS: { label: string; value: QueryStatus | 'ALL' }[] = [
   { label: 'All',     value: 'ALL' },
   { label: 'Pending', value: 'PENDING' },
   { label: 'AI ✦',   value: 'AI_REVIEWED' },
@@ -75,7 +36,7 @@ const FILTERS: { label: string; value: QueryStatus | 'ALL' }[] = [
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: QueryStatus }) {
+export function StatusBadge({ status }: { status: QueryStatus }) {
   const m = STATUS_META[status];
   return (
     <View style={{ backgroundColor: m.bg, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3 }}>
@@ -344,16 +305,20 @@ export default function AdminQueriesScreen() {
 
   useEffect(() => { load(); }, [filter]); // load is stable, filter is the real trigger
 
+  const { resolveWithEdit, rejectQuery } = useAdminQueryStore();
+
   const handleReply = async (reply: string, newStatus: QueryStatus) => {
     if (!selected) return;
     setSubmitting(true);
     try {
       const token = await getToken();
-      await api.patch(
-        `/api/queries/${selected.id}/reply`,
-        { adminReply: reply, status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      if (!token) return;
+
+      if (newStatus === 'REJECTED') {
+        await rejectQuery(token, selected.id);
+      } else {
+        await resolveWithEdit(token, selected.id, reply);
+      }
       setModalVisible(false);
       setSelected(null);
       load();
