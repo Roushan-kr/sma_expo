@@ -8,30 +8,30 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useConsumerProfileStore } from '@/stores/useConsumerProfileStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useAuth } from '@clerk/clerk-expo';
 import { useNavigation } from 'expo-router';
 
 export default function ConsumerProfileScreen() {
   const { getToken } = useAuth();
   const navigation: any = useNavigation();
-  const { profile, loading, error, loadProfile, updateProfile } =
-    useConsumerProfileStore();
+  const { profile, loading, error, syncProfile, updateProfile } =
+    useAuthStore();
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ name: '', address: '', phoneNumber: '' });
 
   useEffect(() => {
     getToken().then((token) => {
-      if (token) loadProfile(token);
+      if (token) syncProfile(token);
     });
-  }, [getToken, loadProfile]);
+  }, [getToken, syncProfile]);
 
   useEffect(() => {
     if (profile) {
       setForm({
-        name: profile.name,
-        address: profile.address,
-        phoneNumber: profile.phoneNumber,
+        name: (profile as any).name,
+        address: (profile as any).address,
+        phoneNumber: (profile as any).phoneNumber,
       });
     }
   }, [profile]);

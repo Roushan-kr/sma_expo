@@ -3,6 +3,8 @@ import { AppRole } from '@/hooks/useRoleBasedView';
 import { PermissionKey, hasPermission as checkPermission } from '@/constants/permissions';
 import { ROLE_TYPE } from '@/types/api.types';
 
+import { useAuthStore } from '@/stores/useAuthStore';
+
 interface RoleContextType {
   role: AppRole | null;
   hasPermission: (permission: PermissionKey) => boolean;
@@ -14,11 +16,12 @@ const RoleContext = createContext<RoleContextType>({
 });
 
 interface RoleProviderProps {
-  role: AppRole | null;
   children: React.ReactNode;
 }
 
-export const RoleProvider: React.FC<RoleProviderProps> = ({ role, children }) => {
+export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
+  const { role } = useAuthStore();
+  
   const hasPermission = (permission: PermissionKey) => {
     // Consumers don't have backend RBAC permissions in this system
     if (role === 'CONSUMER' || role === null) return false;

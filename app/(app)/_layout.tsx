@@ -3,33 +3,23 @@ import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawe
 import { useAuth } from '@clerk/clerk-expo';
 import { ActivityIndicator, View, Text } from 'react-native';
 
-import { useAdminAuthSync } from '@/hooks/useAdminAuthSync';
-import { useConsumerAuthSync } from '@/hooks/useConsumerAuthSync';
-import { useCurrentRole } from '@/hooks/useRoleBasedView';
-import { useUserStore } from '@/stores/useUserStore';
-import { useConsumerProfileStore } from '@/stores/useConsumerProfileStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { RoleProvider } from '@/context/RoleContext';
+import { useEffect } from 'react';
 
 export default function AppLayout() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+  const { profile, loading, error, syncProfile, role } = useAuthStore();
 
-  // ── Identity bootstrap ────────────────────────────────────────────────────
-  // Both hooks are internally gated by isSignedIn, so calling both is safe.
-  // Only the hook that matches the actual signed-in user will hit the backend.
-  useAdminAuthSync();
-  useConsumerAuthSync();
-  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isSignedIn && !profile && !loading && !error) {
+      getToken().then(token => {
+        if (token) syncProfile(token);
+      });
+    }
+  }, [isSignedIn, profile, loading, error, getToken, syncProfile]);
 
-  const role = useCurrentRole();
-  const userError = useUserStore((s) => s.error);
-  const consumerError = useConsumerProfileStore((s) => s.error);
-
-  // Block child routes while role is still resolving.
-  // Unblock immediately if:
-  //   - user is not signed in (let role guards on individual screens handle redirect)
-  //   - role has resolved (non-null)
-  //   - a backend error occurred (unblock and let role guard redirect to sign-in)
-  const isBootstrapping =
-    isSignedIn === true && role === null && !userError && !consumerError;
+  const isBootstrapping = isSignedIn && role === null && loading && !error;
 
   if (isBootstrapping) {
     return (
@@ -47,114 +37,116 @@ export default function AppLayout() {
   }
 
   return (
-    <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
-        headerStyle: { backgroundColor: '#0f172a' },
-        headerTintColor: '#f8fafc',
-        drawerStyle: { backgroundColor: '#1e293b' },
-        drawerActiveTintColor: '#818cf8',
-        drawerInactiveTintColor: '#cbd5e1',
-      }}
-    >
-      {/* ── Consumer Routes ── */}
-      <Drawer.Screen 
-        name="dashboard" 
-        options={{ 
-          drawerLabel: 'Home',
-          title: 'My Dashboard',
-          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {}
-        }} 
-      />
-      <Drawer.Screen 
-        name="billing/index" 
-        options={{ 
-          drawerLabel: 'Billing (View & Pay)',
-          title: 'Billing History',
-          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {}
-        }} 
-      />
-      <Drawer.Screen 
-        name="notifications/index" 
-        options={{ 
-          drawerLabel: 'Notifications',
-          title: 'Notifications',
-          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {} 
-        }} 
-      />
-      <Drawer.Screen 
-        name="support/index" 
-        options={{ 
-          drawerLabel: 'Connect Me (Support)',
-          title: 'Support',
-          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {} 
-        }} 
-      />
+    <RoleProvider>
+      <Drawer
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        screenOptions={{
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#f8fafc',
+          drawerStyle: { backgroundColor: '#1e293b' },
+          drawerActiveTintColor: '#818cf8',
+          drawerInactiveTintColor: '#cbd5e1',
+        }}
+      >
+        {/* ── Consumer Routes ── */}
+        <Drawer.Screen 
+          name="dashboard" 
+          options={{ 
+            drawerLabel: 'Home',
+            title: 'My Dashboard',
+            drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {}
+          }} 
+        />
+        <Drawer.Screen 
+          name="billing/index" 
+          options={{ 
+            drawerLabel: 'Billing (View & Pay)',
+            title: 'Billing History',
+            drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {}
+          }} 
+        />
+        <Drawer.Screen 
+          name="notifications/index" 
+          options={{ 
+            drawerLabel: 'Notifications',
+            title: 'Notifications',
+            drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {} 
+          }} 
+        />
+        <Drawer.Screen 
+          name="support/index" 
+          options={{ 
+            drawerLabel: 'Connect Me (Support)',
+            title: 'Support',
+            drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {} 
+          }} 
+        />
 
-      {/* ── Admin Routes ── */}
-      <Drawer.Screen 
-        name="admin-dashboard" 
-        options={{ 
-          drawerLabel: 'Control Panel',
-          title: 'Admin Dashboard',
-          drawerItemStyle: role === 'CONSUMER' ? { display: 'none' } : {} 
-        }} 
-      />
-      <Drawer.Screen 
-        name="admin-billing" 
-        options={{ 
-          drawerLabel: 'Billing Management',
-          title: 'Billing Management',
-          drawerItemStyle: role === 'CONSUMER' || role === 'SUPPORT_AGENT' ? { display: 'none' } : {} 
-        }} 
-      />
-      <Drawer.Screen 
-        name="admin-queries" 
-        options={{ 
-          drawerLabel: 'Customer Queries',
-          title: 'Manage Queries',
-          drawerItemStyle: role === 'CONSUMER' || role === 'AUDITOR' ? { display: 'none' } : {} 
-        }} 
-      />
+        {/* ── Admin Routes ── */}
+        <Drawer.Screen 
+          name="admin-dashboard" 
+          options={{ 
+            drawerLabel: 'Control Panel',
+            title: 'Admin Dashboard',
+            drawerItemStyle: role === 'CONSUMER' ? { display: 'none' } : {} 
+          }} 
+        />
+        <Drawer.Screen 
+          name="admin-billing" 
+          options={{ 
+            drawerLabel: 'Billing Management',
+            title: 'Billing Management',
+            drawerItemStyle: role === 'CONSUMER' || role === 'SUPPORT_AGENT' ? { display: 'none' } : {} 
+          }} 
+        />
+        <Drawer.Screen 
+          name="admin-queries" 
+          options={{ 
+            drawerLabel: 'Customer Queries',
+            title: 'Manage Queries',
+            drawerItemStyle: role === 'CONSUMER' || role === 'AUDITOR' ? { display: 'none' } : {} 
+          }} 
+        />
 
-      {/* ── Shared Routes ── */}
-      <Drawer.Screen 
-        name="profile" 
-        options={{ 
-          drawerLabel: 'My Account',
-          title: 'Profile', 
-        }} 
-      />
+        {/* ── Shared Routes ── */}
+        <Drawer.Screen 
+          name="profile" 
+          options={{ 
+            drawerLabel: 'My Account',
+            title: 'Profile', 
+          }} 
+        />
 
-      {/* ── Hidden Screens (Accessed via nested navigation, not drawer menu) ── */}
-      <Drawer.Screen 
-        name="index" 
-        options={{ 
-          drawerItemStyle: { display: 'none' },
-          headerShown: false,
-        }} 
-      />
-      <Drawer.Screen 
-        name="meter/[id]" 
-        options={{ 
-          drawerItemStyle: { display: 'none' },
-          title: 'Meter Details'
-        }} 
-      />
-      <Drawer.Screen 
-        name="admin-query/[id]" 
-        options={{ 
-          drawerItemStyle: { display: 'none' },
-          headerShown: false,
-        }} 
-      />
-    </Drawer>
+        {/* ── Hidden Screens (Accessed via nested navigation, not drawer menu) ── */}
+        <Drawer.Screen 
+          name="index" 
+          options={{ 
+            drawerItemStyle: { display: 'none' },
+            headerShown: false,
+          }} 
+        />
+        <Drawer.Screen 
+          name="meter/[id]" 
+          options={{ 
+            drawerItemStyle: { display: 'none' },
+            title: 'Meter Details'
+          }} 
+        />
+        <Drawer.Screen 
+          name="admin-query/[id]" 
+          options={{ 
+            drawerItemStyle: { display: 'none' },
+            headerShown: false,
+          }} 
+        />
+      </Drawer>
+    </RoleProvider>
   );
 }
 
 // ── Custom Drawer Definition ──
 function CustomDrawerContent(props: any) {
-  const role = useCurrentRole();
+  const { role } = useAuthStore();
   const title = role === 'CONSUMER' ? 'My Utility Portal' : 'Admin Portal';
 
   return (

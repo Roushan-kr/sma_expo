@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useAuth, useUser as useClerkUser } from '@clerk/clerk-expo';
 import { useNavigation } from 'expo-router';
 
@@ -16,13 +16,13 @@ export default function AdminProfileScreen() {
   const { getToken } = useAuth();
   const { user: clerkUser } = useClerkUser();
   const navigation: any = useNavigation();
-  const { profile, loading, error, loadProfile } = useUserStore();
+  const { profile, loading, error, syncProfile } = useAuthStore();
 
   useEffect(() => {
     getToken().then((token) => {
-      if (token) loadProfile(token);
+      if (token) syncProfile(token);
     });
-  }, [getToken, loadProfile]);
+  }, [getToken, syncProfile]);
 
   if (loading && !profile) {
     return (
@@ -56,7 +56,7 @@ export default function AdminProfileScreen() {
           </View>
           <Text className="text-xl font-bold text-slate-50">{profile?.name ?? clerkUser?.fullName}</Text>
           <View className="bg-indigo-500/20 px-3 py-1 rounded-full mt-2">
-            <Text className="text-indigo-400 text-xs font-bold uppercase">{profile?.role ?? 'ADMIN'}</Text>
+            <Text className="text-indigo-400 text-xs font-bold uppercase">{(profile as any)?.role ?? 'ADMIN'}</Text>
           </View>
         </View>
 
@@ -64,7 +64,7 @@ export default function AdminProfileScreen() {
           <View>
             <Text className="text-slate-500 text-xs font-bold mb-1 uppercase tracking-wider">Email Address</Text>
             <View className="bg-slate-900/50 rounded-xl px-4 py-3 border border-slate-700">
-               <Text className="text-slate-200">{profile?.email ?? clerkUser?.primaryEmailAddress?.emailAddress ?? 'N/A'}</Text>
+               <Text className="text-slate-200">{(profile as any)?.email ?? clerkUser?.primaryEmailAddress?.emailAddress ?? 'N/A'}</Text>
             </View>
           </View>
 

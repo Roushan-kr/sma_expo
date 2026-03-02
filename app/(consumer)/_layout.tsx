@@ -2,20 +2,22 @@ import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useAuth } from '@clerk/clerk-expo';
 import { ActivityIndicator, View, Text } from 'react-native';
+import { useEffect } from 'react';
 
-import { useConsumerAuthSync } from '@/hooks/useConsumerAuthSync';
-import { useConsumerProfileStore } from '@/stores/useConsumerProfileStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { RoleProvider } from '@/context/RoleContext';
 
 export default function ConsumerLayout() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+  const { profile, loading, error, syncProfile } = useAuthStore();
 
-  // Scoped Auth Sync - only runs when user is in (consumer) group
-  useConsumerAuthSync();
-
-  const profile = useConsumerProfileStore((s) => s.profile);
-  const loading = useConsumerProfileStore((s) => s.loading);
-  const error = useConsumerProfileStore((s) => s.error);
+  useEffect(() => {
+    if (isSignedIn && !profile && !loading && !error) {
+      getToken().then(token => {
+        if (token) syncProfile(token);
+      });
+    }
+  }, [isSignedIn, profile, loading, error, getToken, syncProfile]);
 
   const isBootstrapping = isSignedIn && !profile && loading && !error;
 
@@ -28,7 +30,7 @@ export default function ConsumerLayout() {
   }
 
   return (
-    <RoleProvider role="CONSUMER">
+    <RoleProvider>
       <Drawer
         drawerContent={(props) => <CustomDrawerContent {...props} />}
         screenOptions={{

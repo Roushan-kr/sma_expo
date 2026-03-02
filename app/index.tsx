@@ -2,14 +2,14 @@ import { View, Text, Pressable, Dimensions, ActivityIndicator } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
-import { useUserStore } from '@/stores/useUserStore';
-import { useConsumerProfileStore } from '@/stores/useConsumerProfileStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const router = useRouter();
+  const { role, syncProfile, isLoaded: storeLoaded } = useAuthStore();
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
@@ -23,21 +23,17 @@ export default function LandingPage() {
             return;
           }
 
-          // Parallel check for both profiles
-          const [adminRes, consumerRes] = await Promise.allSettled([
-            useUserStore.getState().loadProfile(token),
-            useConsumerProfileStore.getState().loadProfile(token)
-          ]);
+          // Unified sync
+          await syncProfile(token);
+          
+          const currentRole = useAuthStore.getState().role;
 
-          const adminProfile = useUserStore.getState().profile;
-          const consumerProfile = useConsumerProfileStore.getState().profile;
-
-          if (adminProfile) {
-            router.replace('/admin-dashboard' as any);
-          } else if (consumerProfile) {
+          if (currentRole === 'CONSUMER') {
             router.replace('/dashboard' as any);
+          } else if (currentRole) {
+            router.replace('/admin-dashboard' as any);
           } else {
-            console.warn('User signed in but no profile found in either store.');
+            console.warn('User signed in but no role found. Registration may be required.');
             setRedirecting(false);
           }
         } catch (err) {
@@ -48,7 +44,7 @@ export default function LandingPage() {
     }
 
     handleAuth();
-  }, [isLoaded, isSignedIn, router, getToken]);
+  }, [isLoaded, isSignedIn, router, getToken, syncProfile]);
 
   if (!isLoaded || (isSignedIn && redirecting)) {
     return (

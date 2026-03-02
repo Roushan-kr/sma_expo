@@ -2,21 +2,23 @@ import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useAuth } from '@clerk/clerk-expo';
 import { ActivityIndicator, View, Text } from 'react-native';
+import { useEffect } from 'react';
 
-import { useAdminAuthSync } from '@/hooks/useAdminAuthSync';
-import { useUserStore } from '@/stores/useUserStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { RoleProvider } from '@/context/RoleContext';
 import { Permission, hasPermission } from '@/constants/permissions';
 
 export default function AdminLayout() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+  const { profile, role, loading, error, syncProfile } = useAuthStore();
 
-  // Scoped Auth Sync - only runs when user is in (admin) group
-  useAdminAuthSync();
-
-  const profile = useUserStore((s) => s.profile);
-  const loading = useUserStore((s) => s.loading);
-  const error = useUserStore((s) => s.error);
+  useEffect(() => {
+    if (isSignedIn && !profile && !loading && !error) {
+      getToken().then(token => {
+        if (token) syncProfile(token);
+      });
+    }
+  }, [isSignedIn, profile, loading, error, getToken, syncProfile]);
 
   const isBootstrapping = isSignedIn && !profile && loading && !error;
 
@@ -28,12 +30,13 @@ export default function AdminLayout() {
     );
   }
 
-  const role = profile?.role;
+  // Use the role from the store directly
+  const currentRole = role;
 
   return (
-    <RoleProvider role={role || null}>
+    <RoleProvider>
       <Drawer
-        drawerContent={(props) => <CustomDrawerContent role={role} {...props} />}
+        drawerContent={(props) => <CustomDrawerContent role={currentRole} {...props} />}
         screenOptions={{
           headerStyle: { backgroundColor: '#0f172a' },
           headerTintColor: '#f8fafc',
@@ -54,7 +57,7 @@ export default function AdminLayout() {
           options={{ 
             drawerLabel: 'Billing Management',
             title: 'Billing Management',
-            drawerItemStyle: !hasPermission(role, Permission.BILLING_READ) ? { display: 'none' } : {}
+            drawerItemStyle: !hasPermission(currentRole as any, Permission.BILLING_READ) ? { display: 'none' } : {}
           }} 
         />
         <Drawer.Screen 
@@ -62,7 +65,7 @@ export default function AdminLayout() {
           options={{ 
             drawerLabel: 'Customer Queries',
             title: 'Manage Queries',
-            drawerItemStyle: !hasPermission(role, Permission.QUERY_MANAGE) ? { display: 'none' } : {}
+            drawerItemStyle: !hasPermission(currentRole as any, Permission.QUERY_MANAGE) ? { display: 'none' } : {}
           }} 
         />
         <Drawer.Screen 
