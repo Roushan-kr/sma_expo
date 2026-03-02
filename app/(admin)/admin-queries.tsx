@@ -293,7 +293,7 @@ export default function AdminQueriesScreen() {
       if (!token) throw new Error('Authentication token missing');
       
       const params = filterRef.current !== 'ALL' ? `?status=${filterRef.current}` : '';
-      const res = await apiRequest<any>(`/api/queries${params}`, {
+      const res = await apiRequest<any>(`/api/support${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

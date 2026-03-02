@@ -118,7 +118,7 @@ export default function SupportScreen() {
       const token = await getToken();
       if (!token) throw new Error('Authentication token missing');
       
-      const res = await apiRequest<any>('/api/queries', {
+      const res = await apiRequest<any>('/api/support/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const inner = res.data;

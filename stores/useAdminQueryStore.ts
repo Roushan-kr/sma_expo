@@ -65,7 +65,7 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   fetchQueries: async (token, status) => {
     set({ loading: true, error: null });
     try {
-      const path = status ? `/api/queries?status=${status}` : '/api/queries';
+      const path = status ? `/api/support?status=${status}` : '/api/support';
       const { data } = await apiRequest<{ data: CustomerQuery[] }>(path, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -80,7 +80,7 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   fetchQueryById: async (token, id) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await apiRequest<CustomerQuery>(`/api/queries/${id}`, {
+      const { data } = await apiRequest<CustomerQuery>(`/api/support/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       set({ selectedQuery: data });
@@ -97,7 +97,7 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
       const query = get().selectedQuery;
       if (!query || !query.adminReply) throw new Error("No AI suggestion to approve");
 
-      await apiRequest(`/api/queries/${id}/reply`, {
+      await apiRequest(`/api/support/${id}/reply`, {
         method: 'PATCH',
         body: { reply: query.adminReply },
         headers: { Authorization: `Bearer ${token}` }
@@ -119,7 +119,7 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   resolveWithEdit: async (token, id, reply) => {
     set({ loading: true, error: null });
     try {
-      await apiRequest(`/api/queries/${id}/reply`, {
+      await apiRequest(`/api/support/${id}/reply`, {
         method: 'PATCH',
         body: { reply },
         headers: { Authorization: `Bearer ${token}` }
@@ -140,7 +140,7 @@ export const useAdminQueryStore = create<AdminQueryState>((set, get) => ({
   rejectQuery: async (token, id) => {
     set({ loading: true, error: null });
     try {
-      await apiRequest(`/api/queries/${id}/status`, {
+      await apiRequest(`/api/support/${id}/status`, {
         method: 'PATCH',
         body: { status: 'REJECTED' },
         headers: { Authorization: `Bearer ${token}` }

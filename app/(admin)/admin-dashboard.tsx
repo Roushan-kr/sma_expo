@@ -351,7 +351,7 @@ export default function AdminDashboardScreen() {
       const [consumersRes, metersRes, queriesRes, billingRes] = await Promise.allSettled([
         apiRequest<{ data: any[]; pagination: { total: number } }>('/api/consumers', { headers }),
         apiRequest<any[]>('/api/smart-meters', { headers }),
-        apiRequest<{ data: any[] }>('/api/queries', { headers }),
+        apiRequest<{ data: any[] }>('/api/support', { headers }),
         apiRequest<{ data: any[] }>('/api/billing', { headers }),
       ]);
 
