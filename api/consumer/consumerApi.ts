@@ -13,9 +13,10 @@ const BASE = `/api/consumers`;
 export const ConsumerAPI = {
   // ── Own profile (signed-in consumer) ──────────────────────────────────────
 
-  async getProfile(token: string): Promise<ApiResponse<Consumer>> {
-    return apiRequest<Consumer>(`${BASE}/me`, {
+  async getProfile(token: string): Promise<ApiResponse<Consumer | null>> {
+    return apiRequest<Consumer | null>(`${BASE}/me`, {
       headers: { Authorization: `Bearer ${token}` },
+      skeletonFallback: null,
     });
   },
 

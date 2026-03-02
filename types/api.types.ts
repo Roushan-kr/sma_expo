@@ -3,6 +3,16 @@ export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
   body?: any;
+  /** Number of times to retry the request on failure (default: 3) */
+  retries?: number;
+  /** Base delay in ms before retrying, grows exponentially (default: 500) */
+  retryDelayMs?: number;
+  /**
+   * If provided, avoids throwing an error after all retries fail,
+   * instead returning this fallback object in the success channel.
+   * Required for critical UI components to gracefully degrade.
+   */
+  skeletonFallback?: any;
 }
 
 export interface ApiResponse<T = any> {

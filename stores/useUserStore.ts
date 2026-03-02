@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
 import type { User, ROLE_TYPE as ApiRoleType } from '../types/api.types';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -30,15 +30,11 @@ export const useUserStore = create<UserState>((set) => ({
   loadProfile: async (token: string) => {
     set({ loading: true, error: null });
     try {
-      // axios wraps response as { data: backendResponse }
-      // backend wraps payload as  { success: true, data: user }
-      // so we need response.data.data to get the actual User row
-      const response = await api.get<{ success: boolean; data: UserProfile }>(
-        '/api/users/me',
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const user = response.data.data;
-      set({ profile: user, loading: false });
+      const { data } = await apiRequest<UserProfile>('/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` },
+        skeletonFallback: null,
+      });
+      set({ profile: data, loading: false });
     } catch (err: any) {
       // axios puts the parsed error JSON in err.response.data
       const message =
