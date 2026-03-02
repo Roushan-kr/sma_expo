@@ -9,20 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useAuth, useUser as useClerkUser } from '@clerk/clerk-expo';
+import { useUser as useClerkUser } from '@clerk/clerk-expo';
 import { useNavigation } from 'expo-router';
 
 export default function AdminProfileScreen() {
-  const { getToken } = useAuth();
   const { user: clerkUser } = useClerkUser();
   const navigation: any = useNavigation();
-  const { profile, loading, error, syncProfile } = useAuthStore();
-
-  useEffect(() => {
-    getToken().then((token) => {
-      if (token) syncProfile(token);
-    });
-  }, [getToken, syncProfile]);
+  const { profile, loading, error } = useAuthStore();
 
   if (loading && !profile) {
     return (

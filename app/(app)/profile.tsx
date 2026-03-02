@@ -20,11 +20,6 @@ export default function ConsumerProfileScreen() {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ name: '', address: '', phoneNumber: '' });
 
-  useEffect(() => {
-    getToken().then((token) => {
-      if (token) syncProfile(token);
-    });
-  }, [getToken, syncProfile]);
 
   useEffect(() => {
     if (profile) {
