@@ -354,9 +354,6 @@ export default function AdminQueriesScreen() {
           gap: 12,
         }}
       >
-        <Pressable onPress={() => navigation.openDrawer()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: C.text }}>☰</Text>
-        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>Customer Queries</Text>
           <Text style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>

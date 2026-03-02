@@ -154,7 +154,6 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
         <View className="flex-row items-center gap-2">
-          <Text className="text-2xl font-bold text-slate-50">Notifications</Text>
           {unreadCount > 0 && (
             <View className="bg-indigo-500 rounded-full min-w-[22px] h-[22px] items-center justify-center px-1.5">
               <Text className="text-white text-xs font-bold">{unreadCount}</Text>

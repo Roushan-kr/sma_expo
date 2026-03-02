@@ -127,16 +127,13 @@ export default function DashboardScreen() {
   }
 
   // Consumer uses phoneNumber (not phone)
-  const phone = user?.primaryPhoneNumber?.phoneNumber ?? 'Unknown';
+  const phone = user?.primaryPhoneNumber?.phoneNumber ?? user?.primaryEmailAddress?.emailAddress ?? 'Unknown';
 
   return (
     <SafeAreaView className="flex-1 bg-slate-900">
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
         <View className="flex-row items-center gap-4">
-          <Pressable onPress={() => navigation.openDrawer()} className="p-2 -ml-2">
-            <Text className="text-slate-300 text-2xl">☰</Text>
-          </Pressable>
           <View>
             <Text className="text-slate-400 text-sm">Signed in as</Text>
             <Text className="text-slate-50 font-semibold text-base">{phone}</Text>

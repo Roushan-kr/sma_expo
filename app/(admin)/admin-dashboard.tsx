@@ -462,9 +462,6 @@ export default function AdminDashboardScreen() {
             ADMIN OVERVIEW
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-            <Pressable onPress={() => navigation.openDrawer()} style={{ padding: 4, marginLeft: -4, marginRight: 8 }}>
-              <Text style={{ color: C.text, fontSize: 24 }}>☰</Text>
-            </Pressable>
             <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>
               Welcome, {user?.firstName ?? 'Admin'} 👋
             </Text>

@@ -347,9 +347,6 @@ export default function AdminBillingScreen() {
           gap: 12,
         }}
       >
-        <Pressable onPress={() => navigation.openDrawer()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: C.text }}>☰</Text>
-        </Pressable>
         <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, flex: 1 }}>
           Billing Management
         </Text>

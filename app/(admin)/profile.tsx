@@ -27,13 +27,6 @@ export default function AdminProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-900 px-6 pt-8">
-      <View className="flex-row items-center mb-6 gap-4">
-        <Pressable onPress={() => navigation.openDrawer()} className="p-2 -ml-2">
-          <Text className="text-slate-300 text-2xl">☰</Text>
-        </Pressable>
-        <Text className="text-2xl font-bold text-slate-50">Admin Settings</Text>
-      </View>
-
       {error ? (
         <View className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl mb-6">
           <Text className="text-red-400 text-sm">{error}</Text>

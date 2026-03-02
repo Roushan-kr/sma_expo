@@ -174,7 +174,6 @@ export default function SupportScreen() {
       <SafeAreaView className="flex-1">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-          <Text className="text-2xl font-bold text-slate-50">Support</Text>
           <Pressable
             className="bg-indigo-500 rounded-xl px-4 py-2"
             onPress={() => { setShowForm((v) => !v); setSubmitError(null); }}

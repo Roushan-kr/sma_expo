@@ -79,13 +79,6 @@ export default function ConsumerProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-slate-900">
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-        {/* Header */}
-        <View className="flex-row items-center mb-6 gap-4">
-          <Pressable onPress={() => navigation.openDrawer()} className="p-2 -ml-2" hitSlop={12}>
-            <Text className="text-slate-300 text-2xl">☰</Text>
-          </Pressable>
-          <Text className="text-2xl font-bold text-slate-50">My Profile</Text>
-        </View>
 
         {profileError ? (
           <View className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl mb-6">

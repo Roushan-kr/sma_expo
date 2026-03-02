@@ -184,7 +184,6 @@ export default function BillingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-slate-900">
       <View className="px-5 pt-4 pb-3">
-        <Text className="text-2xl font-bold text-slate-50">Billing History</Text>
       </View>
 
       <View className="flex-1 px-5">
