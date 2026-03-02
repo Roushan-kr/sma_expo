@@ -10,7 +10,7 @@
  */
 import { useUser } from '@clerk/clerk-expo';
 import { useStableToken } from '@/hooks/useStableToken';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -331,6 +331,7 @@ export default function AdminDashboardScreen() {
   const getToken = useStableToken();
   const { user } = useUser();
   const router = useRouter();
+  const navigation: any = useNavigation();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -461,9 +462,14 @@ export default function AdminDashboardScreen() {
           <Text style={{ fontSize: 13, color: C.muted, fontWeight: '600', letterSpacing: 0.5 }}>
             ADMIN OVERVIEW
           </Text>
-          <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: 2 }}>
-            Welcome, {user?.firstName ?? 'Admin'} 👋
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+            <Pressable onPress={() => navigation.openDrawer()} style={{ padding: 4, marginLeft: -4, marginRight: 8 }}>
+              <Text style={{ color: C.text, fontSize: 24 }}>☰</Text>
+            </Pressable>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>
+              Welcome, {user?.firstName ?? 'Admin'} 👋
+            </Text>
+          </View>
         </View>
 
         {error ? (

@@ -4,7 +4,7 @@
  * Roles: SUPER_ADMIN, STATE_ADMIN, BOARD_ADMIN
  */
 import { useStableToken } from '@/hooks/useStableToken';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -284,6 +284,7 @@ export default function AdminBillingScreen() {
 
   const getToken = useStableToken();
   const router = useRouter();
+  const navigation: any = useNavigation();
 
   const [reports, setReports] = useState<BillingReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,8 +343,8 @@ export default function AdminBillingScreen() {
           gap: 12,
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={{ fontSize: 20, color: C.muted }}>←</Text>
+        <Pressable onPress={() => navigation.openDrawer()} hitSlop={12}>
+          <Text style={{ fontSize: 24, color: C.text }}>☰</Text>
         </Pressable>
         <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, flex: 1 }}>
           Billing Management

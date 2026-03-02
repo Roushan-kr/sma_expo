@@ -1,5 +1,5 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,10 +10,12 @@ import {
   View,
 } from 'react-native';
 import { api } from '@/lib/api';
+import { useStableToken } from '@/hooks/useStableToken';
+import { useMeterStore } from '@/stores/useMeterStore';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 
-// ─── Types (matches Prisma SmartMeter model) ───────────────────────────────────
+// ─── Types (matches Prisma SmartMeter model + relations) ─────────────────────
 
 export type MeterStatus = 'ACTIVE' | 'INACTIVE' | 'FAULTY' | 'DISCONNECTED';
 
@@ -21,7 +23,7 @@ export interface SmartMeter {
   id: string;
   meterNumber: string;
   status: MeterStatus;
-  consumerId: string;
+  consumerId?: string;
   tariffId: string;
   createdAt: string;
   updatedAt: string;
@@ -87,39 +89,24 @@ function MeterCard({
 export default function DashboardScreen() {
   useRoleGuard(['CONSUMER']);
 
-
-  const { signOut, getToken, isLoaded } = useAuth();
+  const { signOut, isLoaded } = useAuth();
+  const getToken = useStableToken();
   const { user } = useUser();
   const router = useRouter();
+  const navigation: any = useNavigation();
 
-  const [meters, setMeters] = useState<SmartMeter[]>([]);
-  const [metersLoading, setMetersLoading] = useState(true);
-  const [metersError, setMetersError] = useState<string | null>(null);
+  const { meters, loading: metersLoading, error: metersError, loadMeters } = useMeterStore();
   const [signingOut, setSigningOut] = useState(false);
 
-  const fetchMeters = useCallback(async () => {
-    setMetersLoading(true);
-    setMetersError(null);
-    try {
-      const token = await getToken();
-      const { data } = await api.get<SmartMeter[]>('/api/smart-meters', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMeters(data);
-    } catch (err: any) {
-      setMetersError(
-        err?.response?.data?.message ??
-          err?.message ??
-          'Failed to load meters.',
-      );
-    } finally {
-      setMetersLoading(false);
-    }
-  }, [getToken]);
-
   useEffect(() => {
-    if (isLoaded) fetchMeters();
-  }, [isLoaded, fetchMeters]);
+    let active = true;
+    if (isLoaded) {
+      getToken().then((token) => {
+        if (active && token) loadMeters(token);
+      });
+    }
+    return () => { active = false; };
+  }, [isLoaded, getToken, loadMeters]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -146,9 +133,14 @@ export default function DashboardScreen() {
     <SafeAreaView className="flex-1 bg-slate-900">
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-        <View>
-          <Text className="text-slate-400 text-sm">Signed in as</Text>
-          <Text className="text-slate-50 font-semibold text-base">{phone}</Text>
+        <View className="flex-row items-center gap-4">
+          <Pressable onPress={() => navigation.openDrawer()} className="p-2 -ml-2">
+            <Text className="text-slate-300 text-2xl">☰</Text>
+          </Pressable>
+          <View>
+            <Text className="text-slate-400 text-sm">Signed in as</Text>
+            <Text className="text-slate-50 font-semibold text-base">{phone}</Text>
+          </View>
         </View>
         <View className="flex-row gap-2">
           <Pressable
@@ -201,7 +193,9 @@ export default function DashboardScreen() {
             </Text>
             <Pressable
               className="bg-indigo-500 rounded-xl px-5 py-2.5"
-              onPress={fetchMeters}
+              onPress={() => {
+                getToken().then(t => { if (t) loadMeters(t); });
+              }}
             >
               <Text className="text-white font-semibold text-sm">Retry</Text>
             </Pressable>

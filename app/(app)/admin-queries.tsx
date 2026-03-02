@@ -4,7 +4,7 @@
  * Roles: SUPER_ADMIN, STATE_ADMIN, BOARD_ADMIN, SUPPORT_AGENT
  */
 import { useStableToken } from '@/hooks/useStableToken';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -308,6 +308,7 @@ export default function AdminQueriesScreen() {
 
   const getToken = useStableToken();
   const router = useRouter();
+  const navigation: any = useNavigation();
 
   const [queries, setQueries] = useState<CustomerQuery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -378,8 +379,8 @@ export default function AdminQueriesScreen() {
           gap: 12,
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={{ fontSize: 20, color: C.muted }}>←</Text>
+        <Pressable onPress={() => navigation.openDrawer()} hitSlop={12}>
+          <Text style={{ fontSize: 24, color: C.text }}>☰</Text>
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>Customer Queries</Text>

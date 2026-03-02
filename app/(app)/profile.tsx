@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { useConsumerProfileStore } from '@/stores/useConsumerProfileStore';
 import { useAuth } from '@clerk/clerk-expo';
+import { useNavigation } from 'expo-router';
 
 export default function ConsumerProfileScreen() {
   const { getToken } = useAuth();
+  const navigation: any = useNavigation();
   const { profile, loading, error, loadProfile, updateProfile } =
     useConsumerProfileStore();
   const [edit, setEdit] = useState(false);
@@ -52,7 +54,12 @@ export default function ConsumerProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-900 px-6 pt-8">
-      <Text className="text-2xl font-bold text-slate-50 mb-4">My Profile</Text>
+      <View className="flex-row items-center mb-4 gap-4">
+        <Pressable onPress={() => navigation.openDrawer()} className="p-2 -ml-2">
+          <Text className="text-slate-300 text-2xl">☰</Text>
+        </Pressable>
+        <Text className="text-2xl font-bold text-slate-50">My Profile</Text>
+      </View>
       {error ? <Text className="text-red-400 mb-2">{error}</Text> : null}
       <View className="gap-4">
         <TextInput

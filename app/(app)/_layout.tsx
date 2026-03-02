@@ -1,6 +1,7 @@
-import { Stack } from 'expo-router';
+import { Drawer } from 'expo-router/drawer';
+import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useAuth } from '@clerk/clerk-expo';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 
 import { useAdminAuthSync } from '@/hooks/useAdminAuthSync';
 import { useConsumerAuthSync } from '@/hooks/useConsumerAuthSync';
@@ -46,63 +47,116 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack>
-      {/* index is the entry gate — role is guaranteed resolved by this point */}
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-        }}
+    <Drawer
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      screenOptions={{
+        headerStyle: { backgroundColor: '#0f172a' },
+        headerTintColor: '#f8fafc',
+        drawerStyle: { backgroundColor: '#1e293b' },
+        drawerActiveTintColor: '#818cf8',
+        drawerInactiveTintColor: '#cbd5e1',
+      }}
+    >
+      {/* ── Consumer Routes ── */}
+      <Drawer.Screen 
+        name="dashboard" 
+        options={{ 
+          drawerLabel: 'Home',
+          title: 'My Dashboard',
+          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {}
+        }} 
       />
-      <Stack.Screen
-        name="admin-dashboard"
-        options={{ headerShown: false }}
+      <Drawer.Screen 
+        name="billing/index" 
+        options={{ 
+          drawerLabel: 'Billing (View & Pay)',
+          title: 'Billing History',
+          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {}
+        }} 
       />
-      <Stack.Screen
-        name="admin-queries"
-        options={{ headerShown: false }}
+      <Drawer.Screen 
+        name="notifications/index" 
+        options={{ 
+          drawerLabel: 'Notifications',
+          title: 'Notifications',
+          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {} 
+        }} 
       />
-      <Stack.Screen
-        name="admin-billing"
-        options={{ headerShown: false }}
+      <Drawer.Screen 
+        name="support/index" 
+        options={{ 
+          drawerLabel: 'Connect Me (Support)',
+          title: 'Support',
+          drawerItemStyle: role !== 'CONSUMER' ? { display: 'none' } : {} 
+        }} 
       />
 
-      <Stack.Screen
-        name="meter/[id]"
-        options={{
-          title: 'Meter Detail',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-        }}
+      {/* ── Admin Routes ── */}
+      <Drawer.Screen 
+        name="admin-dashboard" 
+        options={{ 
+          drawerLabel: 'Control Panel',
+          title: 'Admin Dashboard',
+          drawerItemStyle: role === 'CONSUMER' ? { display: 'none' } : {} 
+        }} 
       />
-      <Stack.Screen
-        name="billing/index"
-        options={{
-          title: 'Billing History',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-        }}
+      <Drawer.Screen 
+        name="admin-billing" 
+        options={{ 
+          drawerLabel: 'Billing Management',
+          title: 'Billing Management',
+          drawerItemStyle: role === 'CONSUMER' || role === 'SUPPORT_AGENT' ? { display: 'none' } : {} 
+        }} 
       />
-      <Stack.Screen
-        name="support/index"
-        options={{
-          title: 'Support',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-        }}
+      <Drawer.Screen 
+        name="admin-queries" 
+        options={{ 
+          drawerLabel: 'Customer Queries',
+          title: 'Manage Queries',
+          drawerItemStyle: role === 'CONSUMER' || role === 'AUDITOR' ? { display: 'none' } : {} 
+        }} 
       />
-      <Stack.Screen
-        name="notifications/index"
-        options={{
-          title: 'Notifications',
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-        }}
+
+      {/* ── Shared Routes ── */}
+      <Drawer.Screen 
+        name="profile" 
+        options={{ 
+          drawerLabel: 'My Account',
+          title: 'Profile', 
+        }} 
       />
-    </Stack>
+
+      {/* ── Hidden Screens (Accessed via nested navigation, not drawer menu) ── */}
+      <Drawer.Screen 
+        name="index" 
+        options={{ 
+          drawerItemStyle: { display: 'none' },
+          headerShown: false,
+        }} 
+      />
+      <Drawer.Screen 
+        name="meter/[id]" 
+        options={{ 
+          drawerItemStyle: { display: 'none' },
+          title: 'Meter Details'
+        }} 
+      />
+    </Drawer>
+  );
+}
+
+// ── Custom Drawer Definition ──
+function CustomDrawerContent(props: any) {
+  const role = useCurrentRole();
+  const title = role === 'CONSUMER' ? 'My Utility Portal' : 'Admin Portal';
+
+  return (
+    <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }}>
+      <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: '#334155', marginBottom: 10 }}>
+        <Text style={{ color: '#f8fafc', fontSize: 20, fontWeight: 'bold' }}>{title}</Text>
+        <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>Role: {role}</Text>
+      </View>
+      <DrawerItemList {...props} />
+    </DrawerContentScrollView>
   );
 }
