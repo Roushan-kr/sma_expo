@@ -141,6 +141,13 @@ export default function AppLayout() {
           title: 'Meter Details'
         }} 
       />
+      <Drawer.Screen 
+        name="admin-query/[id]" 
+        options={{ 
+          drawerItemStyle: { display: 'none' },
+          headerShown: false,
+        }} 
+      />
     </Drawer>
   );
 }
