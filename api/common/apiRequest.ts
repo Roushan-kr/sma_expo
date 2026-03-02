@@ -44,20 +44,26 @@ export async function apiRequest<T = any>(
 
       const response = await fetch(url, fetchOptions);
       
-      let json: any;
-      try {
-        json = await response.json();
-      } catch (e) {
-        throw new Error(`Invalid JSON response from server (HTTP ${response.status})`);
+      let json: any = {};
+      const text = await response.text();
+      
+      if (text) {
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          if (response.ok) {
+            throw new Error(`Invalid JSON response (HTTP ${response.status})`);
+          }
+        }
       }
 
-      if (!response.ok) {
+      if (!response.ok && response.status !== 304) {
         const errorMsg = json.error ?? json.message ?? `HTTP ${response.status}`;
         throw { message: errorMsg, status: response.status, data: json };
       }
 
       const data: T = json.data !== undefined ? json.data : json;
-      return { data, status: response.status };
+      return { data: (data === undefined ? {} : data) as T, status: response.status };
 
     } catch (err: any) {
       lastError = err;

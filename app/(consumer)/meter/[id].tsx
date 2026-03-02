@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 import { Svg, Rect, Text as SvgText, Line } from 'react-native-svg';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
+import { useStableToken } from '@/hooks/useStableToken';
 import type { MeterStatus } from '../dashboard';
 
 // ─── Types (match Prisma schema exactly) ──────────────────────────────────────
@@ -147,7 +148,7 @@ function ConsumptionBarChart({ data }: { data: { x: string; y: number }[] }) {
 
 export default function MeterDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getToken } = useAuth();
+  const getToken = useStableToken();
   const router = useRouter();
 
   const [meter, setMeter] = useState<MeterDetail | null>(null);
@@ -160,20 +161,24 @@ export default function MeterDetailScreen() {
     setError(null);
     try {
       const token = await getToken();
+      if (!token) throw new Error('Authentication token missing');
+      
       const headers = { Authorization: `Bearer ${token}` };
+      
       // Fetch meter detail and last-7-days DAILY aggregates in parallel
       const [meterRes, aggRes] = await Promise.all([
-        api.get<MeterDetail>(`/api/smart-meters/${id}`, { headers }),
-        api.get<ConsumptionAggregate[]>(
-          `/api/smart-meters/${id}/aggregates?granularity=DAILY&days=7`,
+        apiRequest<MeterDetail>(`/api/smart-meters/my-meters/${id}`, { headers }),
+        apiRequest<ConsumptionAggregate[]>(
+          `/api/smart-meters/my-meters/${id}/aggregates?granularity=DAILY&days=7`,
           { headers }
         ),
       ]);
+      
       setMeter(meterRes.data);
-      setAggregates(aggRes.data);
+      setAggregates(aggRes.data || []);
     } catch (err: any) {
       setError(
-        err?.response?.data?.message ?? err?.message ?? 'Failed to load meter.'
+        err?.message ?? 'Failed to load meter data.'
       );
     } finally {
       setLoading(false);
@@ -203,7 +208,7 @@ export default function MeterDetailScreen() {
   }
 
   // Chart: x = periodStart date (MM/DD), y = totalUnits (kWh)
-  const chartData = aggregates.map((a) => ({
+  const chartData = (Array.isArray(aggregates) ? aggregates : []).map((a) => ({
     x: new Date(a.periodStart).toLocaleDateString('en-IN', { month: '2-digit', day: '2-digit' }),
     y: a.totalUnits,
   }));

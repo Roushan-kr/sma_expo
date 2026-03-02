@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
 
 // ─── Types (match Prisma CustomerQuery exactly) ────────────────────────────────
 
@@ -116,16 +116,24 @@ export default function SupportScreen() {
     setError(null);
     try {
       const token = await getToken();
-      const { data } = await api.get<CustomerQuery[]>('/api/support', {
+      if (!token) throw new Error('Authentication token missing');
+      
+      const res = await apiRequest<any>('/api/queries', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      const inner = res.data;
+      const data: CustomerQuery[] = Array.isArray(inner)
+        ? inner
+        : Array.isArray(inner?.data)
+          ? inner.data
+          : [];
       setQueries(data);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load queries.');
+      setError(err?.message ?? 'Failed to load queries.');
     } finally {
       setLoading(false);
     }
-  }, []); // stable from useStableToken
+  }, [getToken]);
 
   useEffect(() => { fetchQueries(); }, [fetchQueries]);
 
@@ -138,17 +146,21 @@ export default function SupportScreen() {
     setSubmitError(null);
     try {
       const token = await getToken();
-      // POST body matches backend: { queryText }
-      await api.post(
+      if (!token) throw new Error('Authentication token missing');
+      
+      await apiRequest(
         '/api/support',
-        { queryText: queryText.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          method: 'POST',
+          body: { queryText: queryText.trim() },
+          headers: { Authorization: `Bearer ${token}` } 
+        }
       );
       setQueryText('');
       setShowForm(false);
       fetchQueries();
     } catch (err: any) {
-      setSubmitError(err?.response?.data?.message ?? 'Failed to submit query.');
+      setSubmitError(err?.message ?? 'Failed to submit query.');
     } finally {
       setSubmitting(false);
     }

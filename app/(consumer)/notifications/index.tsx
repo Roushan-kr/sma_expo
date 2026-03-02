@@ -8,7 +8,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
+import { useStableToken } from '@/hooks/useStableToken';
 
 // ─── Types (match Prisma Notification exactly) ────────────────────────────────
 
@@ -71,7 +72,7 @@ function NotificationCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function NotificationsScreen() {
-  const { getToken } = useAuth();
+  const getToken = useStableToken();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,12 +87,22 @@ export default function NotificationsScreen() {
     setError(null);
     try {
       const token = await getToken();
-      const { data } = await api.get<Notification[]>('/api/notifications', {
+      if (!token) throw new Error('Authentication token missing');
+      
+      const res = await apiRequest<any>('/api/notifications', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      const inner = res.data;
+      const data: Notification[] = Array.isArray(inner)
+        ? inner
+        : Array.isArray(inner?.data)
+          ? inner.data
+          : [];
+          
       setNotifications(data);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load notifications.');
+      setError(err?.message ?? 'Failed to load notifications.');
     } finally {
       setLoading(false);
     }
@@ -100,17 +111,18 @@ export default function NotificationsScreen() {
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   const markAsRead = useCallback(async (id: string) => {
-    // Optimistic update using isRead
+    // Optimistic update
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
     try {
       const token = await getToken();
-      await api.patch(
-        `/api/notifications/${id}/read`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (!token) throw new Error('Authentication token missing');
+      
+      await apiRequest(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch {
       // Revert on failure
       setNotifications((prev) =>
@@ -123,11 +135,12 @@ export default function NotificationsScreen() {
     setMarkingAll(true);
     try {
       const token = await getToken();
-      await api.patch(
-        '/api/notifications/read-all',
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (!token) throw new Error('Authentication token missing');
+      
+      await apiRequest('/api/notifications/read-all', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {
       // silently fail

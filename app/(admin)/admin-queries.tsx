@@ -21,7 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
 import { ROLE_TYPE } from '@/types/api.types';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
 
@@ -290,13 +290,23 @@ export default function AdminQueriesScreen() {
     setError(null);
     try {
       const token = await getToken();
+      if (!token) throw new Error('Authentication token missing');
+      
       const params = filterRef.current !== 'ALL' ? `?status=${filterRef.current}` : '';
-      const res = await api.get<{ data: CustomerQuery[] }>(`/api/queries${params}`, {
+      const res = await apiRequest<any>(`/api/queries${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setQueries((res.data as any).data ?? res.data ?? []);
+      
+      const inner = res.data;
+      const data: CustomerQuery[] = Array.isArray(inner)
+        ? inner
+        : Array.isArray(inner?.data)
+          ? inner.data
+          : [];
+          
+      setQueries(data);
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to load queries.');
+      setError(e?.message ?? 'Failed to load queries.');
     } finally {
       setLoading(false);
       setRefreshing(false);

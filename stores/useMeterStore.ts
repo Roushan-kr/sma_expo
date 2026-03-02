@@ -22,7 +22,7 @@ export const useMeterStore = create<MeterStoreState>((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const { data } = await apiRequest<SmartMeter[]>('/api/smart-meters', {
+      const { data } = await apiRequest<SmartMeter[]>('/api/smart-meters/my-meters', {
         headers: { Authorization: `Bearer ${token}` },
         skeletonFallback: [],
       });

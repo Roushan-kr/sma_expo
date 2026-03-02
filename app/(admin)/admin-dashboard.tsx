@@ -22,7 +22,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
 import { ROLE_TYPE } from '@/types/api.types';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
 
@@ -349,26 +349,25 @@ export default function AdminDashboardScreen() {
 
       // Fetch all data in parallel
       const [consumersRes, metersRes, queriesRes, billingRes] = await Promise.allSettled([
-        api.get<{ data: any[]; pagination: { total: number } }>('/api/consumers', { headers }),
-        api.get<any[]>('/api/smart-meters', { headers }),
-        api.get<{ data: any[] }>('/api/queries', { headers }),
-        api.get<{ data: any[] }>('/api/billing', { headers }),
+        apiRequest<{ data: any[]; pagination: { total: number } }>('/api/consumers', { headers }),
+        apiRequest<any[]>('/api/smart-meters', { headers }),
+        apiRequest<{ data: any[] }>('/api/queries', { headers }),
+        apiRequest<{ data: any[] }>('/api/billing', { headers }),
       ]);
 
       // Backend wraps all responses as { success, data: T }
-      // Paginated endpoints wrap further: { success, data: { data: [], pagination: {} } }
-      // Helper: safely pull out the inner array from either shape
+      // apiRequest already extracts the inner 'data'
+      // Paginated endpoints wrap further: { data: [], pagination: {} }
       const unwrapArray = (raw: any): any[] => {
         if (Array.isArray(raw)) return raw;
-        if (raw && Array.isArray(raw.data)) return raw.data;    // paginated: { data: [], pagination }
-        if (raw && Array.isArray(raw.data?.data)) return raw.data.data; // double-wrapped
+        if (raw && Array.isArray(raw.data)) return raw.data;
         return [];
       };
 
       const consumers    = consumersRes.status === 'fulfilled' ? consumersRes.value.data : null;
-      const metersRaw    = metersRes.status  === 'fulfilled'   ? (metersRes.value.data as any) : null;
-      const queriesRaw   = queriesRes.status === 'fulfilled'   ? (queriesRes.value.data as any) : null;
-      const billingRaw   = billingRes.status === 'fulfilled'   ? (billingRes.value.data as any) : null;
+      const metersRaw    = metersRes.status  === 'fulfilled'   ? metersRes.value.data : null;
+      const queriesRaw   = queriesRes.status === 'fulfilled'   ? queriesRes.value.data : null;
+      const billingRaw   = billingRes.status === 'fulfilled'   ? billingRes.value.data : null;
 
       const queriesData = unwrapArray(queriesRaw);
       const billingData = unwrapArray(billingRaw);

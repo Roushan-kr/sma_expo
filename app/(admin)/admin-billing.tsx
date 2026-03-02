@@ -19,7 +19,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
+import { logger } from '@/lib/logger';
 import { ROLE_TYPE } from '@/types/api.types';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
 
@@ -178,21 +179,26 @@ function GenerateBillModal({
     setLoading(true);
     try {
       const token = await getToken();
-      await api.post(
+      if (!token) throw new Error('Authentication token missing');
+      
+      await apiRequest(
         '/api/billing/generate',
         {
-          meterId: meterId.trim(),
-          billingStart: start,
-          billingEnd: end,
-          taxRate: parseFloat(taxRate) / 100,
+          method: 'POST',
+          body: {
+            meterId: meterId.trim(),
+            billingStart: start,
+            billingEnd: end,
+            taxRate: parseFloat(taxRate) / 100,
+          },
+          headers: { Authorization: `Bearer ${token}` } 
         },
-        { headers: { Authorization: `Bearer ${token}` } },
       );
       Alert.alert('Success', 'Billing report generated!');
       onGenerated();
       onClose();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error ?? 'Could not generate bill.');
+      Alert.alert('Error', e?.message ?? 'Could not generate bill.');
     } finally {
       setLoading(false);
     }
@@ -301,27 +307,25 @@ export default function AdminBillingScreen() {
     setError(null);
     try {
       const token = await getToken();
-      const res = await api.get<any>('/api/billing?limit=50', {
+      if (!token) throw new Error('Authentication token missing');
+      
+      const res = await apiRequest<any>('/api/billing?limit=50', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Backend: { success, data: { data: BillingReport[], pagination } }
-      // axios wraps body in res.data, so:
-      //   res.data          = { success, data: { data: [], pagination } }
-      //   res.data.data     = { data: [], pagination }   ← object, NOT array
-      //   res.data.data.data = []                        ← actual array
-      const raw = res.data;
-      const inner = raw?.data;
+      
+      const inner = res.data;
       const data: BillingReport[] = Array.isArray(inner)
-        ? inner                      // flat { success, data: [] }
+        ? inner                      // flat list
         : Array.isArray(inner?.data)
-          ? inner.data               // paginated { success, data: { data: [], pagination } }
+          ? inner.data               // paginated list
           : [];
+          
       setReports(data);
       setTotalRevenue(data.reduce((s, r) => s + (r.totalAmount ?? 0), 0));
       setTotalUnits(data.reduce((s, r) => s + (r.totalUnits ?? 0), 0));
 
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to load billing.');
+      setError(e?.message ?? 'Failed to load billing.');
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -9,7 +9,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { api } from '@/lib/api';
+import { apiRequest } from '@/api/common/apiRequest';
+import { logger } from '@/lib/logger';
+import { showMessage } from 'react-native-flash-message';
 
 // ─── Types (match Prisma BillingReport exactly) ───────────────────────────────
 
@@ -133,16 +135,26 @@ export default function BillingScreen() {
     setError(null);
     try {
       const token = await getToken();
-      const { data } = await api.get<BillingReport[]>('/api/billing', {
+      if (!token) throw new Error('Authentication token missing');
+      
+      const res = await apiRequest<any>('/api/billing/my-bills', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      const inner = res.data;
+      const data: BillingReport[] = Array.isArray(inner)
+        ? inner
+        : Array.isArray(inner?.data)
+          ? inner.data
+          : [];
+          
       setReports(data);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load billing.');
+      setError(err?.message ?? 'Failed to load billing history.');
     } finally {
       setLoading(false);
     }
-  }, []); // stable token, no dep needed
+  }, [getToken]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -150,14 +162,20 @@ export default function BillingScreen() {
     setDownloadingId(reportId);
     try {
       const token = await getToken();
-      // Backend returns GeneratedReportFile.fileUrl via a signed URL endpoint
-      const { data } = await api.get<{ url: string }>(
-        `/api/reports/${reportId}/download`,
+      if (!token) throw new Error('Authentication token missing');
+      
+      const { data } = await apiRequest<{ url: string }>(
+        `/api/billing/my-bills/${reportId}/download`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (data.url) await Linking.openURL(data.url);
-    } catch {
-      // silently fail
+      if (data?.url) {
+        await Linking.openURL(data.url);
+      } else {
+        showMessage({ message: 'Download link not found', type: 'warning' });
+      }
+    } catch (err: any) {
+      // apiRequest already shows toast for major errors
+      logger.error('Download failed', err);
     } finally {
       setDownloadingId(null);
     }
