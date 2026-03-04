@@ -1,12 +1,15 @@
-import { Drawer } from 'expo-router/drawer';
-import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
-import { useAuth } from '@clerk/clerk-expo';
-import { ActivityIndicator, View, Text } from 'react-native';
-import { useEffect } from 'react';
+import { Drawer } from "expo-router/drawer";
+import {
+  DrawerContentScrollView,
+  DrawerItemList,
+} from "@react-navigation/drawer";
+import { useAuth } from "@clerk/clerk-expo";
+import { ActivityIndicator, View, Text } from "react-native";
+import { useEffect } from "react";
 
-import { useAuthStore } from '@/stores/useAuthStore';
-import { RoleProvider } from '@/context/RoleContext';
-import { Permission, hasPermission } from '@/constants/permissions';
+import { useAuthStore } from "@/stores/useAuthStore";
+import { RoleProvider } from "@/context/RoleContext";
+import { Permission, hasPermission } from "@/constants/permissions";
 
 export default function AdminLayout() {
   const { isSignedIn, getToken } = useAuth();
@@ -16,7 +19,14 @@ export default function AdminLayout() {
 
   if (isBootstrapping) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a' }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#0f172a",
+        }}
+      >
         <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
@@ -28,53 +38,105 @@ export default function AdminLayout() {
   return (
     <RoleProvider>
       <Drawer
-        drawerContent={(props) => <CustomDrawerContent role={currentRole} {...props} />}
+        drawerContent={(props) => (
+          <CustomDrawerContent role={currentRole} {...props} />
+        )}
         screenOptions={{
-          headerStyle: { backgroundColor: '#0f172a' },
-          headerTintColor: '#f8fafc',
-          drawerStyle: { backgroundColor: '#1e293b' },
-          drawerActiveTintColor: '#818cf8',
-          drawerInactiveTintColor: '#cbd5e1',
+          headerStyle: { backgroundColor: "#0f172a" },
+          headerTintColor: "#f8fafc",
+          drawerStyle: { backgroundColor: "#1e293b" },
+          drawerActiveTintColor: "#818cf8",
+          drawerInactiveTintColor: "#cbd5e1",
         }}
       >
-        <Drawer.Screen 
-          name="admin-dashboard" 
-          options={{ 
-            drawerLabel: 'Control Panel',
-            title: 'Admin Dashboard',
-          }} 
+        <Drawer.Screen
+          name="admin-dashboard"
+          options={{
+            drawerLabel: "Control Panel",
+            title: "Admin Dashboard",
+          }}
         />
-        <Drawer.Screen 
-          name="admin-billing" 
-          options={{ 
-            drawerLabel: 'Billing Management',
-            title: 'Billing Management',
-            drawerItemStyle: !hasPermission(currentRole as any, Permission.BILLING_READ) ? { display: 'none' } : {}
-          }} 
+        <Drawer.Screen
+          name="admin-billing"
+          options={{
+            drawerLabel: "Billing Management",
+            title: "Billing Management",
+            drawerItemStyle: !hasPermission(
+              currentRole as any,
+              Permission.BILLING_READ,
+            )
+              ? { display: "none" }
+              : {},
+          }}
         />
-        <Drawer.Screen 
-          name="admin-queries" 
-          options={{ 
-            drawerLabel: 'Customer Queries',
-            title: 'Manage Queries',
-            drawerItemStyle: !hasPermission(currentRole as any, Permission.QUERY_MANAGE) ? { display: 'none' } : {}
-          }} 
+        <Drawer.Screen
+          name="admin-queries"
+          options={{
+            drawerLabel: "Customer Queries",
+            title: "Manage Queries",
+            drawerItemStyle: !hasPermission(
+              currentRole as any,
+              Permission.QUERY_MANAGE,
+            )
+              ? { display: "none" }
+              : {},
+          }}
         />
-        <Drawer.Screen 
-          name="profile" 
-          options={{ 
-            drawerLabel: 'Settings',
-            title: 'Profile', 
-          }} 
+        <Drawer.Screen
+          name="admin-consumers"
+          options={{
+            drawerLabel: "Consumers",
+            title: "All Consumers",
+            drawerItemStyle: !hasPermission(
+              currentRole as any,
+              Permission.CONSUMER_READ,
+            )
+              ? { display: "none" }
+              : {},
+          }}
+        />
+        <Drawer.Screen
+          name="admin-meters"
+          options={{
+            drawerLabel: "Smart Meters",
+            title: "Managed Meters",
+            drawerItemStyle: !hasPermission(
+              currentRole as any,
+              Permission.METER_READ,
+            )
+              ? { display: "none" }
+              : {},
+          }}
+        />
+        <Drawer.Screen
+          name="profile"
+          options={{
+            drawerLabel: "Settings",
+            title: "Profile",
+          }}
         />
 
         {/* Hidden Screens */}
-        <Drawer.Screen 
-          name="admin-query/[id]" 
-          options={{ 
-            drawerItemStyle: { display: 'none' },
+        <Drawer.Screen
+          name="admin-query/[id]"
+          options={{
+            drawerItemStyle: { display: "none" },
             headerShown: false,
-          }} 
+          }}
+        />
+        <Drawer.Screen
+          name="admin-consumer/[id]"
+          options={{
+            drawerItemStyle: { display: "none" },
+            title: "Consumer Details",
+          }}
+        />
+        <Drawer.Screen
+          name="admin-meter/[id]"
+          options={{
+            drawerItemStyle: { display: "none" },
+            title: "Meter Details",
+          }}
         />
       </Drawer>
     </RoleProvider>
@@ -83,10 +145,21 @@ export default function AdminLayout() {
 
 function CustomDrawerContent({ role, ...props }: any) {
   return (
-    <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }}>
-      <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: '#334155', marginBottom: 10 }}>
-        <Text style={{ color: '#f8fafc', fontSize: 20, fontWeight: 'bold' }}>Admin Portal</Text>
-        <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>Role: {role}</Text>
+    <DrawerContentScrollView {...props} style={{ backgroundColor: "#0f172a" }}>
+      <View
+        style={{
+          padding: 20,
+          borderBottomWidth: 1,
+          borderBottomColor: "#334155",
+          marginBottom: 10,
+        }}
+      >
+        <Text style={{ color: "#f8fafc", fontSize: 20, fontWeight: "bold" }}>
+          Admin Portal
+        </Text>
+        <Text style={{ color: "#94a3b8", fontSize: 12, marginTop: 4 }}>
+          Role: {role}
+        </Text>
       </View>
       <DrawerItemList {...props} />
     </DrawerContentScrollView>

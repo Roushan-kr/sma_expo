@@ -76,24 +76,27 @@ function StatCard({
   sub,
   accent,
   icon,
+  onPress,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   accent: string;
   icon: string;
+  onPress: () => void;
 }) {
   return (
-    <View
-      style={{
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
         flex: 1,
-        backgroundColor: C.surface,
+        backgroundColor: pressed ? C.surface2 : C.surface,
         borderRadius: 20,
         padding: 16,
         marginHorizontal: 4,
         borderLeftWidth: 3,
         borderLeftColor: accent,
-      }}
+      })}
     >
       <Text style={{ fontSize: 22 }}>{icon}</Text>
       <Text
@@ -129,7 +132,7 @@ function StatCard({
           {sub}
         </Text>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -532,6 +535,7 @@ export default function AdminDashboardScreen() {
                 label="Consumers"
                 value={stats.totalConsumers}
                 accent={C.blue}
+                onPress={() => router.push("/admin-consumers" as any)}
               />
               <StatCard
                 icon="⚡"
@@ -539,6 +543,9 @@ export default function AdminDashboardScreen() {
                 value={stats.activeMeters}
                 sub={`of ${stats.totalMeters} total`}
                 accent={C.emerald}
+                onPress={() =>
+                  router.push("/admin-meters?status=ACTIVE" as any)
+                }
               />
             </View>
 
@@ -556,6 +563,7 @@ export default function AdminDashboardScreen() {
                   label="Total Revenue"
                   value={fmt(stats.totalRevenue)}
                   accent={C.indigo}
+                  onPress={() => router.push("/admin-billing")}
                 />
               )}
               {hasPermission(role, Permission.QUERY_MANAGE) && (
@@ -567,6 +575,7 @@ export default function AdminDashboardScreen() {
                     stats.pendingQueries > 0 ? "Needs attention" : "All clear ✓"
                   }
                   accent={stats.pendingQueries > 0 ? C.amber : C.emerald}
+                  onPress={() => router.push("/admin-queries")}
                 />
               )}
             </View>
