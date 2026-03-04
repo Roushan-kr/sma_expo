@@ -1,17 +1,11 @@
 /**
  * Admin Dashboard — Overview
  * SuperAdmin / StateAdmin / BoardAdmin
- *
- * Sections:
- *  1. Stat cards  (consumers, queries, billing revenue)
- *  2. SVG bar chart (monthly revenue, last 6 months)
- *  3. Query status ring chart
- *  4. Quick actions → Queries | Billing
  */
 import { useUser } from "@clerk/clerk-expo";
 import { useStableToken } from "@/hooks/useStableToken";
-import { useRouter, useNavigation } from "expo-router";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { Permission, hasPermission } from "@/constants/permissions";
 import { useAuthStore } from "@/stores/useAuthStore";
 import {
@@ -23,17 +17,26 @@ import {
   Text,
   View,
 } from "react-native";
-import Svg, {
-  Circle,
-  G,
-  Line,
-  Path,
-  Rect,
-  Text as SvgText,
-} from "react-native-svg";
+import Svg, { Circle, G, Line, Rect, Text as SvgText } from "react-native-svg";
 import { apiRequest } from "@/api/common/apiRequest";
 import { ROLE_TYPE } from "@/types/api.types";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+
+// ─── Colors ───────────────────────────────────────────────────────────────────
+const COLORS = {
+  bg: "#0f172a",
+  surface: "#1e293b",
+  surface2: "#273549",
+  indigo: "#6366f1",
+  indigoLight: "#818cf8",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  blue: "#3b82f6",
+  text: "#f8fafc",
+  muted: "#94a3b8",
+  dim: "#475569",
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,23 +53,6 @@ interface AdminStats {
   monthlyStats?: { month: string; revenue: number; consumption: number }[];
   queryDistribution?: Record<string, number>;
 }
-
-// ─── Colour palette ───────────────────────────────────────────────────────────
-
-const C = {
-  bg: "#0f172a",
-  surface: "#1e293b",
-  surface2: "#273549",
-  indigo: "#6366f1",
-  indigoLight: "#818cf8",
-  emerald: "#10b981",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
-  blue: "#3b82f6",
-  text: "#f8fafc",
-  muted: "#94a3b8",
-  dim: "#475569",
-};
 
 // ─── Mini stat card ───────────────────────────────────────────────────────────
 
@@ -88,47 +74,21 @@ function StatCard({
   return (
     <Pressable
       onPress={onPress}
+      className="flex-1 rounded-[20px] p-4 mt-1 mx-1 border-l-[3px] bg-surface"
       style={({ pressed }) => ({
-        flex: 1,
-        backgroundColor: pressed ? C.surface2 : C.surface,
-        borderRadius: 20,
-        padding: 16,
-        marginHorizontal: 4,
-        borderLeftWidth: 3,
+        backgroundColor: pressed ? COLORS.surface2 : COLORS.surface,
         borderLeftColor: accent,
       })}
     >
-      <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text
-        style={{
-          fontSize: 22,
-          fontWeight: "800",
-          color: C.text,
-          marginTop: 8,
-          letterSpacing: -0.5,
-        }}
-      >
+      <Text className="text-[22px]">{icon}</Text>
+      <Text className="text-[22px] font-extrabold text-text mt-2 tracking-tighter">
         {value}
       </Text>
-      <Text
-        style={{
-          fontSize: 11,
-          color: C.muted,
-          marginTop: 2,
-          fontWeight: "600",
-        }}
-      >
+      <Text className="text-[11px] text-muted mt-0.5 font-semibold">
         {label}
       </Text>
       {sub ? (
-        <Text
-          style={{
-            fontSize: 10,
-            color: accent,
-            marginTop: 4,
-            fontWeight: "700",
-          }}
-        >
+        <Text className="text-[10px] mt-1 font-bold" style={{ color: accent }}>
           {sub}
         </Text>
       ) : null}
@@ -169,7 +129,7 @@ function RevenueBarChart({
             y1={y}
             x2={W - PAD.right}
             y2={y}
-            stroke={C.dim}
+            stroke={COLORS.dim}
             strokeWidth={0.5}
             strokeDasharray="4,4"
           />
@@ -190,14 +150,14 @@ function RevenueBarChart({
               width={barW}
               height={barH}
               rx={5}
-              fill={color ?? (isMax ? C.indigo : C.indigoLight)}
+              fill={color ?? (isMax ? COLORS.indigo : COLORS.indigoLight)}
               opacity={isMax || color ? 1 : 0.55}
             />
             <SvgText
               x={x + barW / 2}
               y={H - 6}
               fontSize={9}
-              fill={C.muted}
+              fill={COLORS.muted}
               textAnchor="middle"
             >
               {d.month}
@@ -230,16 +190,16 @@ function QueryRingChart({
   const circumference = 2 * Math.PI * R;
 
   const segments = [
-    { value: pending, color: C.amber },
-    { value: aiReviewed, color: C.blue },
-    { value: resolved, color: C.emerald },
-    { value: rejected, color: C.rose },
+    { value: pending, color: COLORS.amber },
+    { value: aiReviewed, color: COLORS.blue },
+    { value: resolved, color: COLORS.emerald },
+    { value: rejected, color: COLORS.rose },
   ];
 
   let cumulative = 0;
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+    <View className="flex-row items-center space-x-4">
       <Svg width={128} height={128}>
         {segments.map((seg, i) => {
           const frac = seg.value / total;
@@ -268,7 +228,7 @@ function QueryRingChart({
           y={CY - 6}
           fontSize={18}
           fontWeight="800"
-          fill={C.text}
+          fill={COLORS.text}
           textAnchor="middle"
         >
           {total}
@@ -277,7 +237,7 @@ function QueryRingChart({
           x={CX}
           y={CY + 10}
           fontSize={9}
-          fill={C.muted}
+          fill={COLORS.muted}
           textAnchor="middle"
         >
           total
@@ -285,31 +245,20 @@ function QueryRingChart({
       </Svg>
 
       {/* Legend */}
-      <View style={{ gap: 8, flex: 1 }}>
+      <View className="flex-1 space-y-2">
         {[
-          { label: "Pending", value: pending, color: C.amber },
-          { label: "AI Reviewed", value: aiReviewed, color: C.blue },
-          { label: "Resolved", value: resolved, color: C.emerald },
-          { label: "Rejected", value: rejected, color: C.rose },
+          { label: "Pending", value: pending, color: COLORS.amber },
+          { label: "AI Reviewed", value: aiReviewed, color: COLORS.blue },
+          { label: "Resolved", value: resolved, color: COLORS.emerald },
+          { label: "Rejected", value: rejected, color: COLORS.rose },
         ].map((l) => (
-          <View
-            key={l.label}
-            style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-          >
+          <View key={l.label} className="flex-row items-center space-x-2">
             <View
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: l.color,
-              }}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: l.color }}
             />
-            <Text style={{ fontSize: 12, color: C.muted, flex: 1 }}>
-              {l.label}
-            </Text>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: C.text }}>
-              {l.value}
-            </Text>
+            <Text className="text-xs text-muted flex-1">{l.label}</Text>
+            <Text className="text-[13px] font-bold text-text">{l.value}</Text>
           </View>
         ))}
       </View>
@@ -335,47 +284,21 @@ function ActionTile({
   return (
     <Pressable
       onPress={onPress}
+      className="flex-1 bg-surface rounded-[20px] p-[18px] mx-1 items-center space-y-2 border border-dim/10"
       style={({ pressed }) => ({
-        flex: 1,
-        backgroundColor: pressed ? C.surface2 : C.surface,
-        borderRadius: 20,
-        padding: 18,
-        marginHorizontal: 4,
-        alignItems: "center",
-        gap: 8,
-        borderWidth: 1,
-        borderColor: C.dim + "44",
+        backgroundColor: pressed ? COLORS.surface2 : COLORS.surface,
       })}
     >
-      <Text style={{ fontSize: 28 }}>{icon}</Text>
+      <Text className="text-[28px]">{icon}</Text>
       {badge !== undefined && badge > 0 ? (
         <View
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            backgroundColor: badgeColor ?? C.rose,
-            borderRadius: 10,
-            minWidth: 20,
-            height: 20,
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 4,
-          }}
+          className="absolute top-3 right-3 rounded-full min-w-[20px] h-5 items-center justify-center px-1"
+          style={{ backgroundColor: badgeColor ?? COLORS.rose }}
         >
-          <Text style={{ fontSize: 10, fontWeight: "800", color: "#fff" }}>
-            {badge}
-          </Text>
+          <Text className="text-[10px] font-extrabold text-white">{badge}</Text>
         </View>
       ) : null}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "700",
-          color: C.text,
-          textAlign: "center",
-        }}
-      >
+      <Text className="text-[13px] font-bold text-text text-center">
         {label}
       </Text>
     </Pressable>
@@ -396,34 +319,35 @@ export default function AdminDashboardScreen() {
   const getToken = useStableToken();
   const { user } = useUser();
   const router = useRouter();
-  const navigation: any = useNavigation();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+  const load = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
 
-    try {
-      const token = await getToken();
-      const headers = { Authorization: `Bearer ${token}` };
+      try {
+        const token = await getToken();
+        const headers = { Authorization: `Bearer ${token}` };
 
-      // Fetch consolidated stats
-      const res = await apiRequest<AdminStats>("/api/dashboard/stats", {
-        headers,
-      });
-      setStats(res.data);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load dashboard.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []); // getToken is stable from useStableToken
+        const res = await apiRequest<AdminStats>("/api/dashboard/stats", {
+          headers,
+        });
+        setStats(res.data);
+      } catch (e: any) {
+        setError(e?.message ?? "Failed to load dashboard.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [getToken],
+  );
 
   useEffect(() => {
     load();
@@ -440,24 +364,15 @@ export default function AdminDashboardScreen() {
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: C.bg,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color={C.indigo} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: 14 }}>
-          Loading dashboard…
-        </Text>
+      <View className="flex-1 bg-bg items-center justify-center">
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-muted mt-3 text-sm">Loading dashboard…</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView className="flex-1 bg-bg">
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
@@ -465,57 +380,28 @@ export default function AdminDashboardScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => load(true)}
-            tintColor={C.indigo}
+            tintColor="#6366f1"
           />
         }
       >
         {/* ── Header ── */}
-        <View
-          style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 }}
-        >
-          <Text
-            style={{
-              fontSize: 13,
-              color: C.muted,
-              fontWeight: "600",
-              letterSpacing: 0.5,
-            }}
-          >
-            ADMIN OVERVIEW
+        <View className="px-5 pt-5 pb-2">
+          <Text className="text-[13px] text-muted font-bold tracking-wider uppercase">
+            Admin Overview
           </Text>
-          <View
-            style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}
-          >
-            <Text style={{ fontSize: 26, fontWeight: "800", color: C.text }}>
-              Welcome, {user?.firstName ?? "Admin"} 👋
-            </Text>
-          </View>
+          <Text className="text-[26px] font-extrabold text-text mt-0.5">
+            Welcome, {user?.firstName ?? "Admin"} 👋
+          </Text>
         </View>
 
         {error ? (
-          <View
-            style={{
-              marginHorizontal: 20,
-              backgroundColor: C.surface,
-              borderRadius: 16,
-              padding: 16,
-              marginTop: 8,
-            }}
-          >
-            <Text style={{ color: "#f87171", fontSize: 13 }}>{error}</Text>
+          <View className="mx-5 bg-surface rounded-2xl p-4 mt-2">
+            <Text className="text-rose text-[13px]">{error}</Text>
             <Pressable
               onPress={() => load()}
-              style={{
-                marginTop: 10,
-                backgroundColor: C.indigo,
-                borderRadius: 10,
-                padding: 10,
-                alignItems: "center",
-              }}
+              className="mt-2.5 bg-indigo rounded-xl p-2.5 items-center"
             >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
-                Retry
-              </Text>
+              <Text className="text-white font-bold text-sm">Retry</Text>
             </Pressable>
           </View>
         ) : null}
@@ -523,18 +409,12 @@ export default function AdminDashboardScreen() {
         {stats ? (
           <>
             {/* ── Stat row 1 ── */}
-            <View
-              style={{
-                flexDirection: "row",
-                paddingHorizontal: 16,
-                marginTop: 16,
-              }}
-            >
+            <View className="flex-row px-4 mt-4">
               <StatCard
                 icon="👥"
                 label="Consumers"
                 value={stats.totalConsumers}
-                accent={C.blue}
+                accent="#3b82f6"
                 onPress={() => router.push("/admin-consumers" as any)}
               />
               <StatCard
@@ -542,7 +422,7 @@ export default function AdminDashboardScreen() {
                 label="Active Meters"
                 value={stats.activeMeters}
                 sub={`of ${stats.totalMeters} total`}
-                accent={C.emerald}
+                accent="#10b981"
                 onPress={() =>
                   router.push("/admin-meters?status=ACTIVE" as any)
                 }
@@ -550,19 +430,13 @@ export default function AdminDashboardScreen() {
             </View>
 
             {/* ── Stat row 2 ── */}
-            <View
-              style={{
-                flexDirection: "row",
-                paddingHorizontal: 16,
-                marginTop: 8,
-              }}
-            >
+            <View className="flex-row px-4 mt-2">
               {hasPermission(role, Permission.BILLING_READ) && (
                 <StatCard
                   icon="💰"
                   label="Total Revenue"
                   value={fmt(stats.totalRevenue)}
-                  accent={C.indigo}
+                  accent="#6366f1"
                   onPress={() => router.push("/admin-billing")}
                 />
               )}
@@ -574,7 +448,7 @@ export default function AdminDashboardScreen() {
                   sub={
                     stats.pendingQueries > 0 ? "Needs attention" : "All clear ✓"
                   }
-                  accent={stats.pendingQueries > 0 ? C.amber : C.emerald}
+                  accent={stats.pendingQueries > 0 ? "#f59e0b" : "#10b981"}
                   onPress={() => router.push("/admin-queries")}
                 />
               )}
@@ -582,23 +456,8 @@ export default function AdminDashboardScreen() {
 
             {/* ── Charts Section ── */}
             {hasPermission(role, Permission.BILLING_READ) && (
-              <View
-                style={{
-                  marginHorizontal: 20,
-                  marginTop: 20,
-                  backgroundColor: C.surface,
-                  borderRadius: 20,
-                  padding: 16,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "700",
-                    color: C.text,
-                    marginBottom: 12,
-                  }}
-                >
+              <View className="mx-5 mt-5 bg-surface rounded-[20px] p-4 shadow-sm">
+                <Text className="text-[15px] font-bold text-text mb-3">
                   Monthly Revenue
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -616,23 +475,8 @@ export default function AdminDashboardScreen() {
               </View>
             )}
 
-            <View
-              style={{
-                marginHorizontal: 20,
-                marginTop: 12,
-                backgroundColor: C.surface,
-                borderRadius: 20,
-                padding: 16,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.text,
-                  marginBottom: 12,
-                }}
-              >
+            <View className="mx-5 mt-3 bg-surface rounded-[20px] p-4 shadow-sm">
+              <Text className="text-[15px] font-bold text-text mb-3">
                 Consumption Trend (Units)
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -643,30 +487,15 @@ export default function AdminDashboardScreen() {
                       amount: s.consumption,
                     })) ?? []
                   }
-                  color={C.emerald}
+                  color="#10b981"
                 />
               </ScrollView>
             </View>
 
             {/* ── Query ring ── */}
             {hasPermission(role, Permission.QUERY_MANAGE) && (
-              <View
-                style={{
-                  marginHorizontal: 20,
-                  marginTop: 12,
-                  backgroundColor: C.surface,
-                  borderRadius: 20,
-                  padding: 16,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "700",
-                    color: C.text,
-                    marginBottom: 14,
-                  }}
-                >
+              <View className="mx-5 mt-3 bg-surface rounded-[20px] p-4 shadow-sm">
+                <Text className="text-[15px] font-bold text-text mb-3.5">
                   Query Breakdown
                 </Text>
                 <QueryRingChart
@@ -679,26 +508,17 @@ export default function AdminDashboardScreen() {
             )}
 
             {/* ── Quick actions ── */}
-            <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: C.muted,
-                  letterSpacing: 0.5,
-                  marginBottom: 10,
-                  paddingHorizontal: 4,
-                }}
-              >
-                QUICK ACTIONS
+            <View className="px-5 mt-5">
+              <Text className="text-[13px] font-bold text-muted tracking-wider uppercase mb-2.5">
+                Quick Actions
               </Text>
-              <View style={{ flexDirection: "row" }}>
+              <View className="flex-row">
                 {hasPermission(role, Permission.QUERY_MANAGE) && (
                   <ActionTile
                     icon="💬"
                     label="Queries"
                     badge={stats.pendingQueries}
-                    badgeColor={C.amber}
+                    badgeColor="#f59e0b"
                     onPress={() => router.push("/admin-queries" as any)}
                   />
                 )}

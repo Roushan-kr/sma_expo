@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,15 +10,13 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useStableToken } from '@/hooks/useStableToken';
-import { useRoleGuard } from '@/hooks/useRoleGuard';
-import { ROLE_TYPE } from '@/types/api.types';
-import { useAdminQueryStore, STATUS_META, C } from '@/stores/useAdminQueryStore';
-import { StatusBadge } from '../admin-queries';
-
-
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useStableToken } from "@/hooks/useStableToken";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
+import { ROLE_TYPE } from "@/types/api.types";
+import { useAdminQueryStore } from "@/stores/useAdminQueryStore";
+import { StatusBadge } from "../admin-queries";
 
 export default function QueryDetailScreen() {
   useRoleGuard([
@@ -31,9 +29,17 @@ export default function QueryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const getToken = useStableToken();
-  const { fetchQueryById, selectedQuery, loading, error, approveAI, resolveWithEdit, rejectQuery } = useAdminQueryStore();
+  const {
+    fetchQueryById,
+    selectedQuery,
+    loading,
+    error,
+    approveAI,
+    resolveWithEdit,
+    rejectQuery,
+  } = useAdminQueryStore();
 
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -47,7 +53,6 @@ export default function QueryDetailScreen() {
   }, [id, getToken, fetchQueryById]);
 
   useEffect(() => {
-    // Prefill the editable text box with the AI reply if it exists, or prior admin edits
     if (selectedQuery?.adminReply) {
       setReplyText(selectedQuery.adminReply);
     }
@@ -57,11 +62,13 @@ export default function QueryDetailScreen() {
     if (!id) return;
     setSubmitting(true);
     const token = await getToken();
-    if (!token) { setSubmitting(false); return; }
+    if (!token) {
+      setSubmitting(false);
+      return;
+    }
     await approveAI(token, id);
     setSubmitting(false);
-    
-    // Automatically navigate back up to the queue list after success
+
     if (!useAdminQueryStore.getState().error) {
       router.back();
     }
@@ -71,10 +78,13 @@ export default function QueryDetailScreen() {
     if (!id || !replyText.trim()) return;
     setSubmitting(true);
     const token = await getToken();
-    if (!token) { setSubmitting(false); return; }
+    if (!token) {
+      setSubmitting(false);
+      return;
+    }
     await resolveWithEdit(token, id, replyText.trim());
     setSubmitting(false);
-    
+
     if (!useAdminQueryStore.getState().error) {
       router.back();
     }
@@ -82,158 +92,224 @@ export default function QueryDetailScreen() {
 
   const handleReject = async () => {
     if (!id) return;
-    
-    Alert.alert("Reject Query", "Are you sure you want to mark this query as REJECTED?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Reject", style: "destructive", onPress: async () => {
-        setSubmitting(true);
-        const token = await getToken();
-        if (!token) { setSubmitting(false); return; }
-        await rejectQuery(token, id);
-        setSubmitting(false);
-        if (!useAdminQueryStore.getState().error) router.back();
-      }}
-    ]);
+
+    Alert.alert(
+      "Reject Query",
+      "Are you sure you want to mark this query as REJECTED?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reject",
+          style: "destructive",
+          onPress: async () => {
+            setSubmitting(true);
+            const token = await getToken();
+            if (!token) {
+              setSubmitting(false);
+              return;
+            }
+            await rejectQuery(token, id);
+            setSubmitting(false);
+            if (!useAdminQueryStore.getState().error) router.back();
+          },
+        },
+      ],
+    );
   };
 
   if (loading && !selectedQuery) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={C.indigo} />
+      <View className="flex-1 bg-bg justify-center items-center">
+        <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
   }
 
   if (error || !selectedQuery) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: C.rose }}>{error || 'Query not found'}</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
-          <Text style={{ color: C.indigo }}>Go Back</Text>
+      <View className="flex-1 bg-bg justify-center items-center p-6 space-y-4">
+        <Text className="text-rose text-center">
+          {error || "Query not found"}
+        </Text>
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-surface px-6 py-2.5 rounded-xl border border-dim"
+        >
+          <Text className="text-indigo font-bold">Go Back</Text>
         </Pressable>
       </View>
     );
   }
 
-  const isResolved = selectedQuery.status === 'RESOLVED' || selectedQuery.status === 'REJECTED';
+  const isResolved =
+    selectedQuery.status === "RESOLVED" || selectedQuery.status === "REJECTED";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView className="flex-1 bg-bg">
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-            <Pressable onPress={() => router.back()} style={{ padding: 4, marginRight: 12 }}>
-              <Text style={{ color: C.muted, fontSize: 32 }}>‹</Text>
+          <View className="flex-row items-center mb-6 space-x-3">
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={12}
+              className="p-1"
+            >
+              <Text className="text-muted text-3xl leading-none">‹</Text>
             </Pressable>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: C.text, fontSize: 20, fontWeight: 'bold' }}>Query Detail</Text>
+            <View className="flex-1">
+              <Text className="text-text text-xl font-extrabold">
+                Query Detail
+              </Text>
             </View>
             <StatusBadge status={selectedQuery.status} />
           </View>
 
           {/* Consumer Info */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: C.muted, fontSize: 13, marginBottom: 4 }}>Consumer</Text>
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: '600' }}>
-              {selectedQuery.consumer?.name || selectedQuery.consumerId}
+          <View className="mb-6">
+            <Text className="text-muted text-xs font-bold uppercase tracking-wider mb-1.5">
+              Consumer
             </Text>
-            <Text style={{ color: C.dim, fontSize: 12, marginTop: 4 }}>
-              Submitted: {new Date(selectedQuery.createdAt).toLocaleDateString()}
-            </Text>
+            <View className="bg-surface rounded-2xl p-4 border border-dim/20 shadow-sm">
+              <Text className="text-text text-base font-bold">
+                {selectedQuery.consumer?.name || selectedQuery.consumerId}
+              </Text>
+              <Text className="text-dim text-[11px] mt-1 font-semibold">
+                ID: {selectedQuery.consumerId}
+              </Text>
+              <Text className="text-muted text-xs mt-2">
+                Submitted:{" "}
+                {new Date(selectedQuery.createdAt).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
           </View>
 
           {/* Original Query */}
-          <View style={{ backgroundColor: C.surface, padding: 16, borderRadius: 12, marginBottom: 24 }}>
-            <Text style={{ color: C.muted, fontSize: 12, marginBottom: 8, fontWeight: '600' }}>ORIGINAL QUERY</Text>
-            <Text style={{ color: C.text, fontSize: 15, lineHeight: 22 }}>
-              "{selectedQuery.queryText}"
+          <View className="mb-6">
+            <Text className="text-muted text-xs font-bold uppercase tracking-wider mb-1.5">
+              Original Query
             </Text>
+            <View className="bg-surface rounded-2xl p-4 border border-dim/20 shadow-sm">
+              <Text className="text-text text-[15px] leading-6">
+                "{selectedQuery.queryText}"
+              </Text>
+            </View>
           </View>
 
           {/* AI Output Section */}
           {selectedQuery.aiCategory && (
-            <View style={{ backgroundColor: '#1e293b88', borderWidth: 1, borderColor: '#3b82f644', padding: 16, borderRadius: 12, marginBottom: 24 }}>
-              <Text style={{ color: '#3b82f6', fontSize: 12, marginBottom: 12, fontWeight: '700' }}>✦ AI CLASSIFICATION</Text>
-              
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-                <View>
-                  <Text style={{ color: C.muted, fontSize: 11 }}>Category</Text>
-                  <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>{selectedQuery.aiCategory}</Text>
+            <View className="mb-6">
+              <Text className="text-indigo text-xs font-extrabold uppercase tracking-wider mb-1.5 flex-row items-center">
+                ✦ AI Analysis
+              </Text>
+              <View className="bg-indigo/5 border border-indigo/20 rounded-2xl p-4 space-y-4">
+                <View className="flex-row justify-between items-center border-b border-indigo/10 pb-3">
+                  <View>
+                    <Text className="text-muted text-[10px] font-bold uppercase">
+                      Category
+                    </Text>
+                    <Text className="text-text text-sm font-bold mt-0.5">
+                      {selectedQuery.aiCategory}
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <Text className="text-muted text-[10px] font-bold uppercase">
+                      Confidence
+                    </Text>
+                    <Text className="text-indigo text-sm font-extrabold mt-0.5">
+                      {selectedQuery.aiConfidence
+                        ? `${(selectedQuery.aiConfidence * 100).toFixed(1)}%`
+                        : "N/A"}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ color: C.muted, fontSize: 11 }}>Confidence</Text>
-                  <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>
-                    {selectedQuery.aiConfidence ? `${(selectedQuery.aiConfidence * 100).toFixed(1)}%` : 'N/A'}
-                  </Text>
-                </View>
-              </View>
 
-              {!isResolved && (
-                <View>
-                  <Text style={{ color: C.muted, fontSize: 11, marginBottom: 6 }}>Suggested Reply</Text>
-                  <TextInput
-                    value={replyText}
-                    onChangeText={setReplyText}
-                    multiline
-                    style={{
-                      backgroundColor: C.bg,
-                      color: C.text,
-                      padding: 12,
-                      borderRadius: 8,
-                      minHeight: 100,
-                      textAlignVertical: 'top'
-                    }}
-                  />
-                </View>
-              )}
+                {!isResolved && (
+                  <View>
+                    <Text className="text-muted text-[10px] font-bold uppercase mb-2">
+                      Suggested Reply (Editable)
+                    </Text>
+                    <TextInput
+                      value={replyText}
+                      onChangeText={setReplyText}
+                      multiline
+                      textAlignVertical="top"
+                      placeholder="Type reply here..."
+                      placeholderTextColor="#475569"
+                      className="bg-bg/50 text-text p-4 rounded-xl text-sm min-h-[120px] border border-indigo/20"
+                    />
+                  </View>
+                )}
+              </View>
             </View>
           )}
 
-          {/* Already resolved view just shows the final admin reply statically */}
+          {/* Final Admin Reply (Static) */}
           {isResolved && (
-            <View style={{ backgroundColor: C.surface, padding: 16, borderRadius: 12, marginBottom: 24 }}>
-              <Text style={{ color: C.emerald, fontSize: 12, marginBottom: 8, fontWeight: '700' }}>FINAL ADMIN REPLY</Text>
-              <Text style={{ color: C.text, fontSize: 14 }}>{selectedQuery.adminReply || 'No reply provided.'}</Text>
+            <View className="mb-6">
+              <Text className="text-emerald text-xs font-bold uppercase tracking-wider mb-1.5">
+                Final Response
+              </Text>
+              <View className="bg-emerald/5 border border-emerald/20 rounded-2xl p-4">
+                <Text className="text-text text-[14px] leading-5">
+                  {selectedQuery.adminReply || "No reply provided."}
+                </Text>
+              </View>
             </View>
           )}
 
           {/* Action Buttons */}
           {!isResolved && (
-            <View style={{ gap: 12, marginTop: 10 }}>
-              {selectedQuery.aiCategory && selectedQuery.adminReply === replyText && (
-                <Pressable
-                  disabled={submitting}
-                  onPress={handleApprove}
-                  style={{ backgroundColor: C.indigo, padding: 16, borderRadius: 12, alignItems: 'center', opacity: submitting ? 0.6 : 1 }}
-                >
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>Approve AI Reply</Text>
-                </Pressable>
-              )}
+            <View className="space-y-3 mt-2">
+              {selectedQuery.aiCategory &&
+                selectedQuery.adminReply === replyText && (
+                  <Pressable
+                    disabled={submitting}
+                    onPress={handleApprove}
+                    className={`bg-indigo rounded-2xl p-4 items-center flex-row justify-center space-x-2 ${submitting ? "opacity-60" : "opacity-100"}`}
+                  >
+                    <Text className="text-white text-base font-extrabold">
+                      Approve AI Reply
+                    </Text>
+                  </Pressable>
+                )}
 
               <Pressable
                 disabled={submitting || !replyText.trim()}
                 onPress={handleEditAndResolve}
-                style={{ backgroundColor: C.surface, borderWidth: 1, borderColor: C.indigo, padding: 16, borderRadius: 12, alignItems: 'center', opacity: submitting ? 0.6 : 1 }}
+                className={`bg-surface border border-indigo rounded-2xl p-4 items-center ${submitting ? "opacity-60" : "opacity-100"}`}
               >
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>
-                  {selectedQuery.aiCategory && selectedQuery.adminReply !== replyText ? 'Submit Edited Reply' : 'Resolve with Reply'}
+                <Text className="text-indigo text-base font-extrabold">
+                  {selectedQuery.aiCategory &&
+                  selectedQuery.adminReply !== replyText
+                    ? "Submit Edited Reply"
+                    : "Resolve with Reply"}
                 </Text>
               </Pressable>
 
               <Pressable
                 disabled={submitting}
                 onPress={handleReject}
-                style={{ padding: 16, alignItems: 'center' }}
+                className="p-4 items-center"
               >
-                <Text style={{ color: C.rose, fontSize: 15, fontWeight: '600' }}>Reject Query</Text>
+                <Text className="text-rose text-base font-bold">
+                  Reject Query
+                </Text>
               </Pressable>
             </View>
           )}
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

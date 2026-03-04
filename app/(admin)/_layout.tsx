@@ -5,28 +5,21 @@ import {
 } from "@react-navigation/drawer";
 import { useAuth } from "@clerk/clerk-expo";
 import { ActivityIndicator, View, Text } from "react-native";
-import { useEffect } from "react";
+import React from "react";
 
 import { useAuthStore } from "@/stores/useAuthStore";
 import { RoleProvider } from "@/context/RoleContext";
 import { Permission, hasPermission } from "@/constants/permissions";
 
 export default function AdminLayout() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn } = useAuth();
   const { profile, role, loading, error } = useAuthStore();
 
   const isBootstrapping = isSignedIn && !profile && loading && !error;
 
   if (isBootstrapping) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#0f172a",
-        }}
-      >
+      <View className="flex-1 items-center justify-center bg-bg">
         <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
@@ -44,9 +37,10 @@ export default function AdminLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: "#0f172a" },
           headerTintColor: "#f8fafc",
-          drawerStyle: { backgroundColor: "#1e293b" },
+          drawerStyle: { backgroundColor: "#1e293b", width: 280 },
           drawerActiveTintColor: "#818cf8",
           drawerInactiveTintColor: "#cbd5e1",
+          headerTitleStyle: { fontWeight: "800" },
         }}
       >
         <Drawer.Screen
@@ -60,7 +54,7 @@ export default function AdminLayout() {
           name="admin-billing"
           options={{
             drawerLabel: "Billing Management",
-            title: "Billing Management",
+            title: "Billing Reports",
             drawerItemStyle: !hasPermission(
               currentRole as any,
               Permission.BILLING_READ,
@@ -73,7 +67,7 @@ export default function AdminLayout() {
           name="admin-queries"
           options={{
             drawerLabel: "Customer Queries",
-            title: "Manage Queries",
+            title: "Customer Queries",
             drawerItemStyle: !hasPermission(
               currentRole as any,
               Permission.QUERY_MANAGE,
@@ -112,7 +106,7 @@ export default function AdminLayout() {
           name="profile"
           options={{
             drawerLabel: "Settings",
-            title: "Profile",
+            title: "Admin Profile",
           }}
         />
 
@@ -145,20 +139,13 @@ export default function AdminLayout() {
 
 function CustomDrawerContent({ role, ...props }: any) {
   return (
-    <DrawerContentScrollView {...props} style={{ backgroundColor: "#0f172a" }}>
-      <View
-        style={{
-          padding: 20,
-          borderBottomWidth: 1,
-          borderBottomColor: "#334155",
-          marginBottom: 10,
-        }}
-      >
-        <Text style={{ color: "#f8fafc", fontSize: 20, fontWeight: "bold" }}>
+    <DrawerContentScrollView {...props} className="bg-bg">
+      <View className="p-5 border-b border-white/10 mb-2.5">
+        <Text className="text-text text-[22px] font-extrabold">
           Admin Portal
         </Text>
-        <Text style={{ color: "#94a3b8", fontSize: 12, marginTop: 4 }}>
-          Role: {role}
+        <Text className="text-muted text-xs mt-1 font-semibold uppercase tracking-wider">
+          {role?.replace("_", " ") || "UNKNOWN ROLE"}
         </Text>
       </View>
       <DrawerItemList {...props} />

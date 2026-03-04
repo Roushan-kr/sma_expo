@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useStableToken } from "@/hooks/useStableToken";
@@ -8,21 +8,11 @@ import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { ROLE_TYPE, SmartMeter } from "@/types/api.types";
 import { AdminListLayout } from "@/components/AdminListLayout";
 
-const COLORS = {
-  surface: "#1e293b",
-  text: "#f8fafc",
-  muted: "#94a3b8",
-  indigo: "#6366f1",
-  emerald: "#10b981",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: COLORS.emerald,
-  INACTIVE: COLORS.muted,
-  FAULTY: COLORS.rose,
-  DISCONNECTED: COLORS.amber,
+const STATUS_MAP: Record<string, { bg: string; text: string }> = {
+  ACTIVE: { bg: "bg-emerald/10", text: "text-emerald" },
+  INACTIVE: { bg: "bg-muted/10", text: "text-muted" },
+  FAULTY: { bg: "bg-rose/10", text: "text-rose" },
+  DISCONNECTED: { bg: "bg-amber/10", text: "text-amber" },
 };
 
 export default function AdminMetersScreen() {
@@ -87,73 +77,32 @@ export default function AdminMetersScreen() {
       searchPlaceholder="Search by meter number..."
       error={error}
       onRetry={() => load()}
-      renderItem={({ item }) => (
-        <Pressable
-          style={styles.card}
-          onPress={() => router.push(`/admin-meter/${item.id}` as any)}
-        >
-          <View style={styles.cardInfo}>
-            <View style={styles.row}>
-              <Text style={styles.cardTitle}>{item.meterNumber}</Text>
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: STATUS_COLORS[item.status] + "22" },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.badgeText,
-                    { color: STATUS_COLORS[item.status] },
-                  ]}
-                >
-                  {item.status}
+      renderItem={({ item }) => {
+        const statusStyle = STATUS_MAP[item.status] || STATUS_MAP.INACTIVE;
+        return (
+          <Pressable
+            className="bg-surface rounded-2xl p-4 flex-row items-center mb-2.5"
+            onPress={() => router.push(`/admin-meter/${item.id}` as any)}
+          >
+            <View className="flex-1">
+              <View className="flex-row items-center space-x-2.5">
+                <Text className="text-[15px] font-bold text-text">
+                  {item.meterNumber}
                 </Text>
+                <View className={`${statusStyle.bg} px-2 py-0.5 rounded-md`}>
+                  <Text
+                    className={`${statusStyle.text} text-[10px] font-extrabold`}
+                  >
+                    {item.status}
+                  </Text>
+                </View>
               </View>
+              <Text className="text-[11px] text-muted mt-1">ID: {item.id}</Text>
             </View>
-            <Text style={styles.cardSub}>ID: {item.id}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
-        </Pressable>
-      )}
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+          </Pressable>
+        );
+      }}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  cardSub: {
-    fontSize: 11,
-    color: COLORS.muted,
-    marginTop: 4,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-  },
-});

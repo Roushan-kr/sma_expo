@@ -3,9 +3,9 @@
  * View all billing reports, generate new bills, filter by meter/consumer.
  * Roles: SUPER_ADMIN, STATE_ADMIN, BOARD_ADMIN
  */
-import { useStableToken } from '@/hooks/useStableToken';
-import { useRouter, useNavigation } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useStableToken } from "@/hooks/useStableToken";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,11 +18,10 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { apiRequest } from '@/api/common/apiRequest';
-import { logger } from '@/lib/logger';
-import { ROLE_TYPE } from '@/types/api.types';
-import { useRoleGuard } from '@/hooks/useRoleGuard';
+} from "react-native";
+import { apiRequest } from "@/api/common/apiRequest";
+import { ROLE_TYPE } from "@/types/api.types";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,30 +47,22 @@ interface BillingReport {
   tariff?: { type: string; unitRate: number };
 }
 
-// ─── Colours ──────────────────────────────────────────────────────────────────
-
-const C = {
-  bg: '#0f172a',
-  surface: '#1e293b',
-  surface2: '#273549',
-  indigo: '#6366f1',
-  emerald: '#10b981',
-  amber: '#f59e0b',
-  rose: '#f43f5e',
-  text: '#f8fafc',
-  muted: '#94a3b8',
-  dim: '#475569',
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtCcy(n: number) {
-  return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function fmtDateRange(start: string, end: string) {
-  const s = new Date(start).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-  const e = new Date(end).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const s = new Date(start).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+  });
+  const e = new Date(end).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
   return `${s} – ${e}`;
 }
 
@@ -79,66 +70,67 @@ function fmtDateRange(start: string, end: string) {
 
 function BillCard({ report }: { report: BillingReport }) {
   return (
-    <View
-      style={{
-        backgroundColor: C.surface,
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 10,
-        gap: 10,
-      }}
-    >
+    <View className="bg-surface rounded-[20px] p-4 mb-2.5 space-y-2.5 shadow-sm">
       {/* Top row */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: C.text }}>
-            {report.meter?.consumer?.name ?? report.meter?.meterNumber ?? 'Unknown'}
+      <View className="flex-row justify-between items-start">
+        <View className="flex-1">
+          <Text className="text-[13px] font-bold text-text">
+            {report.meter?.consumer?.name ??
+              report.meter?.meterNumber ??
+              "Unknown"}
           </Text>
-          <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-            {report.meter?.meterNumber} · {fmtDateRange(report.billingStart, report.billingEnd)}
+          <Text className="text-[11px] text-muted mt-0.5">
+            {report.meter?.meterNumber} ·{" "}
+            {fmtDateRange(report.billingStart, report.billingEnd)}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+        <View className="flex-row space-x-1.5 items-center">
           {!report.isLatest && (
-            <View style={{ backgroundColor: '#f59e0b22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
-              <Text style={{ fontSize: 10, color: C.amber, fontWeight: '700' }}>v{report.version}</Text>
+            <View className="bg-amber/10 rounded-lg px-2 py-0.5">
+              <Text className="text-[10px] text-amber font-bold">
+                v{report.version}
+              </Text>
             </View>
           )}
           {report.isLatest && (
-            <View style={{ backgroundColor: '#6366f122', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
-              <Text style={{ fontSize: 10, color: C.indigo, fontWeight: '700' }}>Latest</Text>
+            <View className="bg-indigo/10 rounded-lg px-2 py-0.5">
+              <Text className="text-[10px] text-indigo font-bold">Latest</Text>
             </View>
           )}
         </View>
       </View>
 
       {/* Amounts */}
-      <View style={{ flexDirection: 'row', gap: 0 }}>
+      <View className="flex-row items-center">
         {[
-          { label: 'Energy', value: fmtCcy(report.energyCharge) },
-          { label: 'Fixed', value: fmtCcy(report.fixedCharge) },
-          ...(report.taxAmount != null ? [{ label: 'Tax', value: fmtCcy(report.taxAmount) }] : []),
+          { label: "Energy", value: fmtCcy(report.energyCharge) },
+          { label: "Fixed", value: fmtCcy(report.fixedCharge) },
+          ...(report.taxAmount != null
+            ? [{ label: "Tax", value: fmtCcy(report.taxAmount) }]
+            : []),
         ].map((item) => (
-          <View key={item.label} style={{ flex: 1 }}>
-            <Text style={{ fontSize: 10, color: C.muted }}>{item.label}</Text>
-            <Text style={{ fontSize: 12, color: '#cbd5e1', fontWeight: '600', marginTop: 1 }}>
+          <View key={item.label} className="flex-1">
+            <Text className="text-[10px] text-muted">{item.label}</Text>
+            <Text className="text-xs text-[#cbd5e1] font-semibold mt-0.5">
               {item.value}
             </Text>
           </View>
         ))}
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 10, color: C.muted }}>Total</Text>
-          <Text style={{ fontSize: 15, color: C.text, fontWeight: '800', marginTop: 1 }}>
+        <View className="items-end">
+          <Text className="text-[10px] text-muted">Total</Text>
+          <Text className="text-[15px] text-text font-extrabold mt-0.5">
             {fmtCcy(report.totalAmount)}
           </Text>
         </View>
       </View>
 
       {/* Footer */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ fontSize: 11, color: C.dim }}>{report.totalUnits.toFixed(1)} kWh</Text>
+      <View className="flex-row justify-between pt-1 border-t border-white/5">
+        <Text className="text-[11px] text-dim">
+          {report.totalUnits.toFixed(1)} kWh
+        </Text>
         {report.tariff && (
-          <Text style={{ fontSize: 11, color: C.dim }}>
+          <Text className="text-[11px] text-dim">
             {report.tariff.type} · ₹{report.tariff.unitRate}/unit
           </Text>
         )}
@@ -161,44 +153,43 @@ function GenerateBillModal({
   const getToken = useStableToken();
   const today = new Date();
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    .toISOString().split('T')[0];
+    .toISOString()
+    .split("T")[0];
   const lastOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    .toISOString().split('T')[0];
+    .toISOString()
+    .split("T")[0];
 
-  const [meterId, setMeterId] = useState('');
+  const [meterId, setMeterId] = useState("");
   const [start, setStart] = useState(firstOfMonth);
   const [end, setEnd] = useState(lastOfMonth);
-  const [taxRate, setTaxRate] = useState('18');
+  const [taxRate, setTaxRate] = useState("18");
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
     if (!meterId.trim()) {
-      Alert.alert('Validation', 'Meter ID is required.');
+      Alert.alert("Validation", "Meter ID is required.");
       return;
     }
     setLoading(true);
     try {
       const token = await getToken();
-      if (!token) throw new Error('Authentication token missing');
-      
-      await apiRequest(
-        '/api/billing/generate',
-        {
-          method: 'POST',
-          body: {
-            meterId: meterId.trim(),
-            billingStart: start,
-            billingEnd: end,
-            taxRate: parseFloat(taxRate) / 100,
-          },
-          headers: { Authorization: `Bearer ${token}` } 
+      if (!token) throw new Error("Authentication token missing");
+
+      await apiRequest("/api/billing/generate", {
+        method: "POST",
+        body: {
+          meterId: meterId.trim(),
+          billingStart: start,
+          billingEnd: end,
+          taxRate: parseFloat(taxRate) / 100,
         },
-      );
-      Alert.alert('Success', 'Billing report generated!');
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      Alert.alert("Success", "Billing report generated!");
       onGenerated();
       onClose();
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Could not generate bill.');
+      Alert.alert("Error", e?.message ?? "Could not generate bill.");
     } finally {
       setLoading(false);
     }
@@ -211,68 +202,61 @@ function GenerateBillModal({
     placeholder?: string,
     hint?: string,
   ) => (
-    <View style={{ gap: 6 }}>
-      <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>{label}</Text>
+    <View className="space-y-1.5">
+      <Text className="text-xs text-muted font-semibold uppercase">
+        {label}
+      </Text>
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={C.dim}
-        style={{
-          backgroundColor: C.surface2,
-          borderRadius: 12,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          fontSize: 14,
-          color: C.text,
-          borderWidth: 1,
-          borderColor: C.dim,
-        }}
+        placeholderTextColor="#475569"
+        className="bg-surface2 rounded-xl px-3.5 py-3 text-sm text-text border border-dim"
       />
-      {hint ? <Text style={{ fontSize: 11, color: C.dim }}>{hint}</Text> : null}
+      {hint ? <Text className="text-[11px] text-dim">{hint}</Text> : null}
     </View>
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000088' }}>
-        <View
-          style={{
-            backgroundColor: C.bg,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            padding: 24,
-            gap: 16,
-          }}
-        >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 17, fontWeight: '800', color: C.text }}>Generate Bill</Text>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-end bg-black/50">
+        <View className="bg-bg rounded-t-[28px] p-6 space-y-4">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-lg font-extrabold text-text">
+              Generate Bill
+            </Text>
             <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={{ fontSize: 22, color: C.muted }}>✕</Text>
+              <Text className="text-2xl text-muted">✕</Text>
             </Pressable>
           </View>
 
-          {field('METER ID', meterId, setMeterId, 'e.g. uuid-of-meter')}
-          {field('BILLING START (YYYY-MM-DD)', start, setStart, '2024-01-01')}
-          {field('BILLING END (YYYY-MM-DD)', end, setEnd, '2024-01-31')}
-          {field('TAX RATE (%)', taxRate, setTaxRate, '18', 'Applied as percentage on subtotal')}
+          {field("Meter ID", meterId, setMeterId, "e.g. uuid-of-meter")}
+          {field("Start Date (YYYY-MM-DD)", start, setStart, "2024-01-01")}
+          {field("End Date (YYYY-MM-DD)", end, setEnd, "2024-01-31")}
+          {field(
+            "Tax Rate (%)",
+            taxRate,
+            setTaxRate,
+            "18",
+            "Applied as percentage on subtotal",
+          )}
 
           <Pressable
             onPress={handleGenerate}
             disabled={loading}
-            style={{
-              backgroundColor: C.indigo,
-              borderRadius: 16,
-              padding: 16,
-              alignItems: 'center',
-              opacity: loading ? 0.6 : 1,
-              marginTop: 4,
-            }}
+            className={`rounded-2xl p-4 items-center bg-indigo mt-1 ${
+              loading ? "opacity-60" : "opacity-100"
+            }`}
           >
             {loading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+              <Text className="text-white font-extrabold text-[15px]">
                 ⚡ Generate Report
               </Text>
             )}
@@ -286,11 +270,14 @@ function GenerateBillModal({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function AdminBillingScreen() {
-  useRoleGuard([ROLE_TYPE.SUPER_ADMIN, ROLE_TYPE.STATE_ADMIN, ROLE_TYPE.BOARD_ADMIN]);
+  useRoleGuard([
+    ROLE_TYPE.SUPER_ADMIN,
+    ROLE_TYPE.STATE_ADMIN,
+    ROLE_TYPE.BOARD_ADMIN,
+  ]);
 
   const getToken = useStableToken();
   const router = useRouter();
-  const navigation: any = useNavigation();
 
   const [reports, setReports] = useState<BillingReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,93 +288,74 @@ export default function AdminBillingScreen() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalUnits, setTotalUnits] = useState(0);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Authentication token missing');
-      
-      const res = await apiRequest<any>('/api/billing?limit=50', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      const inner = res.data;
-      const data: BillingReport[] = Array.isArray(inner)
-        ? inner                      // flat list
-        : Array.isArray(inner?.data)
-          ? inner.data               // paginated list
-          : [];
-          
-      setReports(data);
-      setTotalRevenue(data.reduce((s, r) => s + (r.totalAmount ?? 0), 0));
-      setTotalUnits(data.reduce((s, r) => s + (r.totalUnits ?? 0), 0));
+  const load = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Authentication token missing");
 
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to load billing.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []); // getToken is stable from useStableToken
+        const res = await apiRequest<any>("/api/billing?limit=50", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-  useEffect(() => { load(); }, [load]);
+        const inner = res.data;
+        const data: BillingReport[] = Array.isArray(inner)
+          ? inner // flat list
+          : Array.isArray(inner?.data)
+            ? inner.data // paginated list
+            : [];
+
+        setReports(data);
+        setTotalRevenue(data.reduce((s, r) => s + (r.totalAmount ?? 0), 0));
+        setTotalUnits(data.reduce((s, r) => s + (r.totalUnits ?? 0), 0));
+      } catch (e: any) {
+        setError(e?.message ?? "Failed to load billing.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [getToken],
+  );
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView className="flex-1 bg-bg">
       {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 12,
-          gap: 12,
-        }}
-      >
-        <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, flex: 1 }}>
-          Billing Management
+      <View className="flex-row items-center px-5 pt-4 pb-3 space-x-3">
+        <Text className="text-[22px] font-extrabold text-text flex-1">
+          Billing Reports
         </Text>
         <Pressable
           onPress={() => setGenerateModal(true)}
-          style={{ backgroundColor: C.indigo, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+          className="bg-indigo rounded-xl px-4 py-2"
         >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>+ Generate</Text>
+          <Text className="text-white font-bold text-[13px]">+ Generate</Text>
         </Pressable>
       </View>
 
       {/* Summary cards */}
       {!loading && !error && (
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 12 }}>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: C.surface,
-              borderRadius: 16,
-              padding: 14,
-              borderLeftWidth: 3,
-              borderLeftColor: C.indigo,
-            }}
-          >
-            <Text style={{ fontSize: 10, color: C.muted, fontWeight: '600' }}>TOTAL REVENUE</Text>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, marginTop: 4 }}>
+        <View className="flex-row px-5 space-x-2.5 mb-3">
+          <View className="flex-1 bg-surface rounded-2xl p-3.5 border-l-[3px] border-indigo shadow-sm">
+            <Text className="text-[10px] text-muted font-bold uppercase">
+              Total Revenue
+            </Text>
+            <Text className="text-lg font-extrabold text-text mt-1">
               {fmtCcy(totalRevenue)}
             </Text>
           </View>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: C.surface,
-              borderRadius: 16,
-              padding: 14,
-              borderLeftWidth: 3,
-              borderLeftColor: C.emerald,
-            }}
-          >
-            <Text style={{ fontSize: 10, color: C.muted, fontWeight: '600' }}>TOTAL UNITS</Text>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, marginTop: 4 }}>
+          <View className="flex-1 bg-surface rounded-2xl p-3.5 border-l-[3px] border-emerald shadow-sm">
+            <Text className="text-[10px] text-muted font-bold uppercase">
+              Total Units
+            </Text>
+            <Text className="text-lg font-extrabold text-text mt-1">
               {totalUnits.toFixed(1)} kWh
             </Text>
           </View>
@@ -396,25 +364,31 @@ export default function AdminBillingScreen() {
 
       {/* List */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={C.indigo} />
-          <Text style={{ color: C.muted, marginTop: 10, fontSize: 13 }}>Loading billing…</Text>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text className="text-muted mt-2.5 text-[13px]">
+            Loading billing…
+          </Text>
         </View>
       ) : error ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
-          <Text style={{ color: '#f87171', textAlign: 'center', fontSize: 14 }}>{error}</Text>
+        <View className="flex-1 items-center justify-center p-6 space-y-3">
+          <Text className="text-rose text-center text-sm">{error}</Text>
           <Pressable
             onPress={() => load()}
-            style={{ backgroundColor: C.indigo, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 }}
+            className="bg-indigo rounded-xl px-6 py-2.5"
           >
-            <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
+            <Text className="text-white font-bold">Retry</Text>
           </Pressable>
         </View>
       ) : reports.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <Text style={{ fontSize: 40 }}>🧾</Text>
-          <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>No billing reports</Text>
-          <Text style={{ color: C.muted, fontSize: 13 }}>Tap "+ Generate" to create one.</Text>
+        <View className="flex-1 items-center justify-center space-y-2">
+          <Text className="text-4xl">🧾</Text>
+          <Text className="text-text text-base font-bold">
+            No billing reports
+          </Text>
+          <Text className="text-muted text-[13px]">
+            Tap "+ Generate" to create one.
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -422,7 +396,11 @@ export default function AdminBillingScreen() {
           keyExtractor={(r) => r.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.indigo} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor="#6366f1"
+            />
           }
           renderItem={({ item }) => <BillCard report={item} />}
           showsVerticalScrollIndicator={false}

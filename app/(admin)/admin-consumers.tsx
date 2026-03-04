@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useStableToken } from "@/hooks/useStableToken";
@@ -7,13 +7,6 @@ import { apiRequest } from "@/api/common/apiRequest";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { ROLE_TYPE, Consumer, PaginatedResponse } from "@/types/api.types";
 import { AdminListLayout } from "@/components/AdminListLayout";
-
-const COLORS = {
-  surface: "#1e293b",
-  text: "#f8fafc",
-  muted: "#94a3b8",
-  indigo: "#6366f1",
-};
 
 export default function AdminConsumersScreen() {
   useRoleGuard([
@@ -80,40 +73,18 @@ export default function AdminConsumersScreen() {
       onRetry={() => load()}
       renderItem={({ item }) => (
         <Pressable
-          style={styles.card}
+          className="bg-surface rounded-2xl p-4 flex-row items-center mb-2.5"
           onPress={() => router.push(`/admin-consumer/${item.id}` as any)}
         >
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{item.name}</Text>
-            <Text style={styles.cardSub}>{item.phoneNumber}</Text>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-text">{item.name}</Text>
+            <Text className="text-xs text-muted mt-0.5">
+              {item.phoneNumber}
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
+          <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
         </Pressable>
       )}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  cardSub: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 2,
-  },
-});

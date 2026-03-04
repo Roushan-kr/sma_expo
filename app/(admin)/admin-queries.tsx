@@ -3,9 +3,9 @@
  * View, filter, and reply to consumer queries.
  * Roles: SUPER_ADMIN, STATE_ADMIN, BOARD_ADMIN, SUPPORT_AGENT
  */
-import { useStableToken } from '@/hooks/useStableToken';
-import { useRouter, useNavigation } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useStableToken } from "@/hooks/useStableToken";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,18 +20,23 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { apiRequest } from '@/api/common/apiRequest';
-import { ROLE_TYPE } from '@/types/api.types';
-import { useRoleGuard } from '@/hooks/useRoleGuard';
+} from "react-native";
+import { apiRequest } from "@/api/common/apiRequest";
+import { ROLE_TYPE } from "@/types/api.types";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
-import { useAdminQueryStore, type QueryStatus, type CustomerQuery, STATUS_META, C } from '@/stores/useAdminQueryStore';
+import {
+  useAdminQueryStore,
+  type QueryStatus,
+  type CustomerQuery,
+  STATUS_META,
+} from "@/stores/useAdminQueryStore";
 
-export const FILTERS: { label: string; value: QueryStatus | 'ALL' }[] = [
-  { label: 'All',     value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'AI ✦',   value: 'AI_REVIEWED' },
-  { label: 'Done',    value: 'RESOLVED' },
+export const FILTERS: { label: string; value: QueryStatus | "ALL" }[] = [
+  { label: "All", value: "ALL" },
+  { label: "Pending", value: "PENDING" },
+  { label: "AI ✦", value: "AI_REVIEWED" },
+  { label: "Done", value: "RESOLVED" },
 ];
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
@@ -39,8 +44,13 @@ export const FILTERS: { label: string; value: QueryStatus | 'ALL' }[] = [
 export function StatusBadge({ status }: { status: QueryStatus }) {
   const m = STATUS_META[status];
   return (
-    <View style={{ backgroundColor: m.bg, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 3 }}>
-      <Text style={{ fontSize: 11, fontWeight: '700', color: m.fg }}>{m.label}</Text>
+    <View
+      className="rounded-full px-2.5 py-0.5"
+      style={{ backgroundColor: m.bg }}
+    >
+      <Text className="text-[11px] font-bold" style={{ color: m.fg }}>
+        {m.label}
+      </Text>
     </View>
   );
 }
@@ -54,28 +64,26 @@ function QueryCard({
   query: CustomerQuery;
   onPress: () => void;
 }) {
-  const needsAction = query.status === 'PENDING' || query.status === 'AI_REVIEWED';
+  const needsAction =
+    query.status === "PENDING" || query.status === "AI_REVIEWED";
   return (
     <Pressable
       onPress={onPress}
+      className={`rounded-[18px] p-4 mb-2.5 border-l-[3px] space-y-2 bg-surface ${
+        needsAction ? "border-amber" : "border-dim"
+      }`}
       style={({ pressed }) => ({
-        backgroundColor: pressed ? C.surface2 : C.surface,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 10,
-        borderLeftWidth: 3,
-        borderLeftColor: needsAction ? C.amber : C.dim,
-        gap: 8,
+        backgroundColor: pressed ? "#273549" : "#1e293b",
       })}
     >
       {/* Consumer + status row */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>
+      <View className="flex-row justify-between items-start">
+        <View className="flex-1 mr-2">
+          <Text className="text-xs text-muted font-semibold">
             {query.consumer?.name ?? query.consumerId.slice(0, 8)}
           </Text>
           <Text
-            style={{ fontSize: 14, color: C.text, fontWeight: '600', marginTop: 3 }}
+            className="text-sm text-text font-semibold mt-0.5"
             numberOfLines={2}
           >
             {query.queryText}
@@ -86,13 +94,13 @@ function QueryCard({
 
       {/* AI tag */}
       {query.aiCategory ? (
-        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#6366f122', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
-            <Text style={{ fontSize: 11, color: C.indigo, fontWeight: '600' }}>
+        <View className="flex-row items-center space-x-1.5">
+          <View className="bg-indigo/10 rounded-lg px-2 py-0.5">
+            <Text className="text-[11px] text-indigo font-semibold">
               ✦ {query.aiCategory}
               {query.aiConfidence != null
                 ? `  ${(query.aiConfidence * 100).toFixed(0)}%`
-                : ''}
+                : ""}
             </Text>
           </View>
         </View>
@@ -100,14 +108,16 @@ function QueryCard({
 
       {/* Reply preview */}
       {query.adminReply ? (
-        <Text style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }} numberOfLines={1}>
+        <Text className="text-xs text-muted italic" numberOfLines={1}>
           ↳ {query.adminReply}
         </Text>
       ) : null}
 
-      <Text style={{ fontSize: 11, color: C.dim }}>
-        {new Date(query.createdAt).toLocaleDateString('en-IN', {
-          day: '2-digit', month: 'short', year: 'numeric',
+      <Text className="text-[11px] text-dim">
+        {new Date(query.createdAt).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
         })}
       </Text>
     </Pressable>
@@ -129,74 +139,71 @@ function ReplyModal({
   onSubmit: (reply: string, newStatus: QueryStatus) => void;
   submitting: boolean;
 }) {
-  const [reply, setReply] = useState('');
-  const [status, setStatus] = useState<QueryStatus>('RESOLVED');
+  const [reply, setReply] = useState("");
+  const [status, setStatus] = useState<QueryStatus>("RESOLVED");
 
   useEffect(() => {
     if (query) {
-      setReply(query.adminReply ?? '');
-      setStatus(query.status === 'REJECTED' ? 'REJECTED' : 'RESOLVED');
+      setReply(query.adminReply ?? "");
+      setStatus(query.status === "REJECTED" ? "REJECTED" : "RESOLVED");
     }
   }, [query]);
 
   if (!query) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000088' }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1 justify-end bg-black/50"
       >
-        <View
-          style={{
-            backgroundColor: C.bg,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            padding: 24,
-            gap: 16,
-            maxHeight: '90%',
-          }}
-        >
+        <View className="bg-bg rounded-t-[28px] p-6 space-y-4 max-h-[90%]">
           {/* Header */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 17, fontWeight: '800', color: C.text }}>Reply to Query</Text>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-lg font-extrabold text-text">
+              Reply to Query
+            </Text>
             <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={{ fontSize: 22, color: C.muted }}>✕</Text>
+              <Text className="text-2xl text-muted">✕</Text>
             </Pressable>
           </View>
 
           {/* Query text */}
-          <View style={{ backgroundColor: C.surface, borderRadius: 14, padding: 12 }}>
-            <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>
-              {query.consumer?.name ?? 'Consumer'}
+          <View className="bg-surface rounded-xl p-3">
+            <Text className="text-xs text-muted mb-1">
+              {query.consumer?.name ?? "Consumer"}
             </Text>
-            <Text style={{ fontSize: 13, color: C.text }}>{query.queryText}</Text>
+            <Text className="text-[13px] text-text">{query.queryText}</Text>
           </View>
 
           {/* Status picker */}
           <View>
-            <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', marginBottom: 8 }}>
-              SET STATUS
+            <Text className="text-xs text-muted font-semibold mb-2 uppercase">
+              Set Status
             </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {(['RESOLVED', 'REJECTED'] as QueryStatus[]).map((s) => {
+            <View className="flex-row space-x-2">
+              {(["RESOLVED", "REJECTED"] as QueryStatus[]).map((s) => {
                 const selected = status === s;
                 const m = STATUS_META[s];
                 return (
                   <Pressable
                     key={s}
                     onPress={() => setStatus(s)}
+                    className="flex-1 rounded-xl p-2.5 items-center border-[1.5px]"
                     style={{
-                      flex: 1,
-                      backgroundColor: selected ? m.bg : C.surface,
-                      borderRadius: 12,
-                      padding: 10,
-                      alignItems: 'center',
-                      borderWidth: 1.5,
-                      borderColor: selected ? m.fg : C.dim,
+                      backgroundColor: selected ? m.bg : "#1e293b",
+                      borderColor: selected ? m.fg : "#475569",
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: selected ? m.fg : C.muted }}>
+                    <Text
+                      className="text-[13px] font-bold"
+                      style={{ color: selected ? m.fg : "#94a3b8" }}
+                    >
                       {m.label}
                     </Text>
                   </Pressable>
@@ -207,27 +214,20 @@ function ReplyModal({
 
           {/* Reply input */}
           <View>
-            <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', marginBottom: 8 }}>
-              REPLY MESSAGE
+            <Text className="text-xs text-muted font-semibold mb-2 uppercase">
+              Reply Message
             </Text>
             <TextInput
               value={reply}
               onChangeText={setReply}
               placeholder="Type your reply…"
-              placeholderTextColor={C.dim}
+              placeholderTextColor="#475569"
               multiline
               numberOfLines={4}
               textAlignVertical="top"
-              style={{
-                backgroundColor: C.surface,
-                borderRadius: 14,
-                padding: 14,
-                fontSize: 14,
-                color: C.text,
-                minHeight: 110,
-                borderWidth: 1,
-                borderColor: reply.trim() ? C.indigo + '88' : C.dim,
-              }}
+              className={`bg-surface rounded-xl p-3.5 text-sm text-text min-h-[110px] border ${
+                reply.trim() ? "border-indigo/50" : "border-dim"
+              }`}
             />
           </View>
 
@@ -235,18 +235,14 @@ function ReplyModal({
           <Pressable
             onPress={() => reply.trim() && onSubmit(reply.trim(), status)}
             disabled={submitting || !reply.trim()}
-            style={{
-              backgroundColor: reply.trim() ? C.indigo : C.dim,
-              borderRadius: 16,
-              padding: 16,
-              alignItems: 'center',
-              opacity: submitting ? 0.6 : 1,
-            }}
+            className={`rounded-2xl p-4 items-center ${
+              reply.trim() ? "bg-indigo" : "bg-dim"
+            } ${submitting ? "opacity-60" : "opacity-100"}`}
           >
             {submitting ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+              <Text className="text-white font-extrabold text-[15px]">
                 Submit Reply
               </Text>
             )}
@@ -269,13 +265,12 @@ export default function AdminQueriesScreen() {
 
   const getToken = useStableToken();
   const router = useRouter();
-  const navigation: any = useNavigation();
 
   const [queries, setQueries] = useState<CustomerQuery[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<QueryStatus | 'ALL'>('ALL');
+  const [filter, setFilter] = useState<QueryStatus | "ALL">("ALL");
 
   const [selected, setSelected] = useState<CustomerQuery | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -284,36 +279,42 @@ export default function AdminQueriesScreen() {
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Authentication token missing');
-      
-      const params = filterRef.current !== 'ALL' ? `?status=${filterRef.current}` : '';
-      const res = await apiRequest<any>(`/api/support${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      const inner = res.data;
-      const data: CustomerQuery[] = Array.isArray(inner)
-        ? inner
-        : Array.isArray(inner?.data)
-          ? inner.data
-          : [];
-          
-      setQueries(data);
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to load queries.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []); // getToken is stable from useStableToken
+  const load = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Authentication token missing");
 
-  useEffect(() => { load(); }, [filter]); // load is stable, filter is the real trigger
+        const params =
+          filterRef.current !== "ALL" ? `?status=${filterRef.current}` : "";
+        const res = await apiRequest<any>(`/api/support${params}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const inner = res.data;
+        const data: CustomerQuery[] = Array.isArray(inner)
+          ? inner
+          : Array.isArray(inner?.data)
+            ? inner.data
+            : [];
+
+        setQueries(data);
+      } catch (e: any) {
+        setError(e?.message ?? "Failed to load queries.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [getToken],
+  );
+
+  useEffect(() => {
+    load();
+  }, [filter, load]);
 
   const { resolveWithEdit, rejectQuery } = useAdminQueryStore();
 
@@ -324,7 +325,7 @@ export default function AdminQueriesScreen() {
       const token = await getToken();
       if (!token) return;
 
-      if (newStatus === 'REJECTED') {
+      if (newStatus === "REJECTED") {
         await rejectQuery(token, selected.id);
       } else {
         await resolveWithEdit(token, selected.id, reply);
@@ -333,31 +334,31 @@ export default function AdminQueriesScreen() {
       setSelected(null);
       load();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error ?? 'Failed to submit reply.');
+      Alert.alert(
+        "Error",
+        e?.response?.data?.error ?? "Failed to submit reply.",
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filtered = filter === 'ALL' ? queries : queries.filter((q) => q.status === filter);
+  const filtered =
+    filter === "ALL" ? queries : queries.filter((q) => q.status === filter);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView className="flex-1 bg-bg">
       {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 12,
-          gap: 12,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>Customer Queries</Text>
-          <Text style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>
-            {filtered.length} {filter === 'ALL' ? 'total' : STATUS_META[filter]?.label.toLowerCase()}
+      <View className="flex-row items-center px-5 pt-4 pb-3 space-x-3">
+        <View className="flex-1">
+          <Text className="text-[22px] font-extrabold text-text">
+            Customer Queries
+          </Text>
+          <Text className="text-xs text-muted mt-0.5">
+            {filtered.length}{" "}
+            {filter === "ALL"
+              ? "total"
+              : STATUS_META[filter as QueryStatus]?.label.toLowerCase() || ""}
           </Text>
         </View>
       </View>
@@ -366,7 +367,11 @@ export default function AdminQueriesScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          gap: 12,
+          paddingBottom: 12,
+        }}
       >
         {FILTERS.map((f) => {
           const active = filter === f.value;
@@ -374,19 +379,10 @@ export default function AdminQueriesScreen() {
             <Pressable
               key={f.value}
               onPress={() => setFilter(f.value)}
-              style={{
-                backgroundColor: active ? C.indigo : C.surface,
-                borderRadius: 100,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-              }}
+              className={`rounded-full px-4 py-2 ${active ? "bg-indigo" : "bg-surface"}`}
             >
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '700',
-                  color: active ? '#fff' : C.muted,
-                }}
+                className={`text-[13px] font-bold ${active ? "text-white" : "text-muted"}`}
               >
                 {f.label}
               </Text>
@@ -397,25 +393,25 @@ export default function AdminQueriesScreen() {
 
       {/* Content */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={C.indigo} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#6366f1" />
         </View>
       ) : error ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
-          <Text style={{ color: '#f87171', textAlign: 'center', fontSize: 14 }}>{error}</Text>
+        <View className="flex-1 items-center justify-center p-6 space-y-3">
+          <Text className="text-rose text-center text-sm">{error}</Text>
           <Pressable
             onPress={() => load()}
-            style={{ backgroundColor: C.indigo, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 }}
+            className="bg-indigo rounded-xl px-6 py-2.5"
           >
-            <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
+            <Text className="text-white font-bold">Retry</Text>
           </Pressable>
         </View>
       ) : filtered.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <Text style={{ fontSize: 40 }}>💬</Text>
-          <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>No queries</Text>
-          <Text style={{ color: C.muted, fontSize: 13 }}>
-            {filter !== 'ALL' ? 'Try a different filter' : 'All clear!'}
+        <View className="flex-1 items-center justify-center space-y-2">
+          <Text className="text-4xl">💬</Text>
+          <Text className="text-text text-base font-bold">No queries</Text>
+          <Text className="text-muted text-[13px]">
+            {filter !== "ALL" ? "Try a different filter" : "All clear!"}
           </Text>
         </View>
       ) : (
@@ -424,7 +420,11 @@ export default function AdminQueriesScreen() {
           keyExtractor={(q) => q.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.indigo} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor="#6366f1"
+            />
           }
           renderItem={({ item }) => (
             <QueryCard
@@ -443,7 +443,10 @@ export default function AdminQueriesScreen() {
       <ReplyModal
         query={selected}
         visible={modalVisible}
-        onClose={() => { setModalVisible(false); setSelected(null); }}
+        onClose={() => {
+          setModalVisible(false);
+          setSelected(null);
+        }}
         onSubmit={handleReply}
         submitting={submitting}
       />

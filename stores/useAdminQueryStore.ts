@@ -36,10 +36,10 @@ export const C = {
 };
 
 export const STATUS_META: Record<QueryStatus, { label: string; bg: string; fg: string }> = {
-  PENDING:     { label: 'Pending',     bg: '#f59e0b22', fg: C.amber },
-  AI_REVIEWED: { label: 'AI Reviewed', bg: '#3b82f622', fg: C.blue },
-  RESOLVED:    { label: 'Resolved',    bg: '#10b98122', fg: C.emerald },
-  REJECTED:    { label: 'Rejected',    bg: '#f43f5e22', fg: C.rose },
+  PENDING:     { label: 'Pending',     bg: '#f59e0b22', fg: '#f59e0b' },
+  AI_REVIEWED: { label: 'AI Reviewed', bg: '#3b82f622', fg: '#3b82f6' },
+  RESOLVED:    { label: 'Resolved',    bg: '#10b98122', fg: '#10b981' },
+  REJECTED:    { label: 'Rejected',    bg: '#f43f5e22', fg: '#f43f5e' },
 };
 
 interface AdminQueryState {

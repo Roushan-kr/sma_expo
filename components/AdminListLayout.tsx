@@ -8,22 +8,8 @@ import {
   Text,
   TextInput,
   View,
-  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
-const COLORS = {
-  bg: "#0f172a",
-  surface: "#1e293b",
-  surface2: "#273549",
-  indigo: "#6366f1",
-  emerald: "#10b981",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
-  text: "#f8fafc",
-  muted: "#94a3b8",
-  dim: "#475569",
-};
 
 interface AdminListLayoutProps<T> {
   title: string;
@@ -59,27 +45,27 @@ export function AdminListLayout<T extends { id: string }>({
   headerRight,
 }: AdminListLayoutProps<T>) {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-bg">
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{title}</Text>
+      <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
+        <Text className="text-[22px] font-extrabold text-text">{title}</Text>
         {headerRight?.()}
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color={COLORS.dim} />
+      <View className="px-5 mb-3">
+        <View className="flex-row items-center bg-surface rounded-xl px-3 py-2.5 space-x-2">
+          <Ionicons name="search" size={18} color="#475569" />
           <TextInput
-            style={styles.searchInput}
+            className="flex-1 text-sm text-text h-10"
             placeholder={searchPlaceholder}
-            placeholderTextColor={COLORS.dim}
+            placeholderTextColor="#475569"
             value={searchQuery}
             onChangeText={onSearchChange}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => onSearchChange("")}>
-              <Ionicons name="close-circle" size={18} color={COLORS.dim} />
+              <Ionicons name="close-circle" size={18} color="#475569" />
             </Pressable>
           )}
         </View>
@@ -87,34 +73,37 @@ export function AdminListLayout<T extends { id: string }>({
 
       {/* Error State */}
       {error ? (
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={onRetry} style={styles.retryButton}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+        <View className="flex-1 items-center justify-center p-6">
+          <Text className="text-rose text-center mb-4">{error}</Text>
+          <Pressable
+            onPress={onRetry}
+            className="bg-indigo px-6 py-2.5 rounded-xl"
+          >
+            <Text className="text-white font-bold">Retry</Text>
           </Pressable>
         </View>
       ) : loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.indigo} />
-          <Text style={styles.loadingText}>Loading...</Text>
+        <View className="flex-1 items-center justify-center p-6">
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text className="text-muted mt-3">Loading...</Text>
         </View>
       ) : (
         <FlatList
           data={data}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.indigo}
+              tintColor="#6366f1"
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name={emptyIcon as any} size={48} color={COLORS.dim} />
-              <Text style={styles.emptyText}>{emptyText}</Text>
+            <View className="items-center justify-center pt-20 space-y-3">
+              <Ionicons name={emptyIcon as any} size={48} color="#475569" />
+              <Text className="text-muted text-base">{emptyText}</Text>
             </View>
           }
           showsVerticalScrollIndicator={false}
@@ -123,80 +112,3 @@ export function AdminListLayout<T extends { id: string }>({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: COLORS.text,
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  errorText: {
-    color: COLORS.rose,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: COLORS.indigo,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  retryButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
-  loadingText: {
-    color: COLORS.muted,
-    marginTop: 12,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyText: {
-    color: COLORS.muted,
-    fontSize: 15,
-  },
-});

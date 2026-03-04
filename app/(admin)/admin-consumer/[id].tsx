@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
-  StyleSheet,
   Pressable,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -13,15 +12,6 @@ import { useStableToken } from "@/hooks/useStableToken";
 import { apiRequest } from "@/api/common/apiRequest";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { ROLE_TYPE, Consumer, SmartMeter } from "@/types/api.types";
-
-const COLORS = {
-  bg: "#0f172a",
-  surface: "#1e293b",
-  text: "#f8fafc",
-  muted: "#94a3b8",
-  indigo: "#6366f1",
-  emerald: "#10b981",
-};
 
 export default function ConsumerDetailScreen() {
   useRoleGuard([
@@ -67,51 +57,66 @@ export default function ConsumerDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.indigo} />
+      <View className="flex-1 items-center justify-center bg-bg">
+        <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
   }
 
   if (error || !consumer) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error || "Consumer not found"}</Text>
+      <View className="flex-1 items-center justify-center bg-bg">
+        <Text className="text-rose text-sm px-6 text-center">
+          {error || "Consumer not found"}
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      className="flex-1 bg-bg"
+      contentContainerStyle={{ padding: 20 }}
+    >
       {/* Profile Card */}
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{consumer.name.charAt(0)}</Text>
+      <View className="bg-surface rounded-3xl p-6 mb-6 shadow-sm">
+        <View className="flex-row items-center space-x-4">
+          <View className="w-[60px] h-[60px] rounded-full bg-indigo items-center justify-center">
+            <Text className="text-2xl font-bold text-white">
+              {consumer.name.charAt(0)}
+            </Text>
           </View>
           <View>
-            <Text style={styles.name}>{consumer.name}</Text>
-            <Text style={styles.subText}>Consumer Account</Text>
+            <Text className="text-xl font-extrabold text-text">
+              {consumer.name}
+            </Text>
+            <Text className="text-[13px] text-muted mt-0.5">
+              Consumer Account
+            </Text>
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View className="h-[1px] bg-slate-700 my-5" />
 
-        <View style={styles.detailRow}>
-          <Ionicons name="call-outline" size={16} color={COLORS.muted} />
-          <Text style={styles.detailText}>{consumer.phoneNumber}</Text>
+        <View className="flex-row items-center space-x-3 mb-3">
+          <Ionicons name="call-outline" size={16} color="#94a3b8" />
+          <Text className="text-sm text-text">{consumer.phoneNumber}</Text>
         </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="location-outline" size={16} color={COLORS.muted} />
-          <Text style={styles.detailText}>{consumer.address}</Text>
+        <View className="flex-row items-center space-x-3">
+          <Ionicons name="location-outline" size={16} color="#94a3b8" />
+          <Text className="text-sm text-text leading-5">
+            {consumer.address}
+          </Text>
         </View>
       </View>
 
       {/* Meters Section */}
-      <Text style={styles.sectionTitle}>Assigned Meters</Text>
+      <Text className="text-base font-bold text-text mb-3">
+        Assigned Meters
+      </Text>
       {meters.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
+        <View className="bg-surface p-6 rounded-2xl items-center">
+          <Text className="text-muted text-sm text-center">
             No meters assigned to this consumer.
           </Text>
         </View>
@@ -119,121 +124,21 @@ export default function ConsumerDetailScreen() {
         meters.map((meter) => (
           <Pressable
             key={meter.id}
-            style={styles.meterCard}
+            className="bg-surface rounded-2xl p-4 flex-row items-center justify-between mb-2.5"
             onPress={() => router.push(`/admin-meter/${meter.id}` as any)}
           >
             <View>
-              <Text style={styles.meterNumber}>{meter.meterNumber}</Text>
-              <Text style={styles.meterStatus}>{meter.status}</Text>
+              <Text className="text-[15px] font-bold text-text">
+                {meter.meterNumber}
+              </Text>
+              <Text className="text-[11px] text-emerald mt-0.5 font-bold uppercase">
+                {meter.status}
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
           </Pressable>
         ))
       )}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
-  content: {
-    padding: 20,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.bg,
-  },
-  errorText: {
-    color: "#f43f5e",
-    fontSize: 14,
-  },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.indigo,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: COLORS.text,
-  },
-  subText: {
-    fontSize: 13,
-    color: COLORS.muted,
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#334155",
-    marginVertical: 20,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  detailText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  emptyCard: {
-    backgroundColor: COLORS.surface,
-    padding: 24,
-    borderRadius: 20,
-    alignItems: "center",
-  },
-  emptyText: {
-    color: COLORS.muted,
-    fontSize: 14,
-  },
-  meterCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  meterNumber: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  meterStatus: {
-    fontSize: 11,
-    color: COLORS.emerald,
-    marginTop: 2,
-  },
-});
