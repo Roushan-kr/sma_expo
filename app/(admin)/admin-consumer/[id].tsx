@@ -12,6 +12,20 @@ import { useStableToken } from "@/hooks/useStableToken";
 import { apiRequest } from "@/api/common/apiRequest";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { ROLE_TYPE, Consumer, SmartMeter } from "@/types/api.types";
+import { Svg, Path, Rect } from "react-native-svg";
+
+interface BillingReport {
+  id: string;
+  totalAmount: number;
+  billingEnd: string;
+}
+
+interface SupportQuery {
+  id: string;
+  queryText: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function ConsumerDetailScreen() {
   useRoleGuard([
@@ -26,6 +40,8 @@ export default function ConsumerDetailScreen() {
 
   const [consumer, setConsumer] = useState<Consumer | null>(null);
   const [meters, setMeters] = useState<SmartMeter[]>([]);
+  const [bills, setBills] = useState<BillingReport[]>([]);
+  const [queries, setQueries] = useState<SupportQuery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,16 +50,29 @@ export default function ConsumerDetailScreen() {
     setError(null);
     try {
       const token = await getToken();
-      const [userRes, meterRes] = await Promise.all([
+      const [userRes, meterRes, billRes, queryRes] = await Promise.all([
         apiRequest<Consumer>(`/api/consumers/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         apiRequest<SmartMeter[]>(`/api/smart-meters/consumer/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        apiRequest<any>(`/api/billing?consumerId=${id}&limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        apiRequest<any>(`/api/support?consumerId=${id}&limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
+
       setConsumer(userRes.data);
       setMeters(meterRes.data || []);
+      setBills(
+        Array.isArray(billRes.data) ? billRes.data : billRes.data.data || [],
+      );
+      setQueries(
+        Array.isArray(queryRes.data) ? queryRes.data : queryRes.data.data || [],
+      );
     } catch (e: any) {
       setError(e?.message ?? "Failed to load consumer details");
     } finally {
@@ -54,6 +83,45 @@ export default function ConsumerDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const renderTrendGraph = () => {
+    if (bills.length < 2) return null;
+    const data = [...bills].reverse().map((b) => b.totalAmount);
+    const max = Math.max(...data, 100);
+    const min = Math.min(...data);
+    const range = max - min || 1;
+    const width = 300;
+    const height = 60;
+    const stepX = width / (data.length - 1);
+
+    const points = data
+      .map((val, i) => {
+        const x = i * stepX;
+        const y = height - ((val - min) / range) * height;
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+    return (
+      <View className="bg-surface rounded-2xl p-4 mb-6">
+        <Text className="text-[10px] text-muted font-bold uppercase mb-3">
+          Billing Trend (Amount)
+        </Text>
+        <Svg width={width} height={height}>
+          <Path
+            d={`M ${points}`}
+            fill="none"
+            stroke="#6366f1"
+            strokeWidth="3"
+          />
+        </Svg>
+        <View className="flex-row justify-between mt-2">
+          <Text className="text-[9px] text-dim">Past</Text>
+          <Text className="text-[9px] text-dim">Recent</Text>
+        </View>
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -96,7 +164,7 @@ export default function ConsumerDetailScreen() {
           </View>
         </View>
 
-        <View className="h-[1px] bg-slate-700 my-5" />
+        <View className="h-[1px] bg-slate-700/50 my-5" />
 
         <View className="flex-row items-center space-x-3 mb-3">
           <Ionicons name="call-outline" size={16} color="#94a3b8" />
@@ -110,35 +178,111 @@ export default function ConsumerDetailScreen() {
         </View>
       </View>
 
+      {renderTrendGraph()}
+
       {/* Meters Section */}
-      <Text className="text-base font-bold text-text mb-3">
-        Assigned Meters
-      </Text>
-      {meters.length === 0 ? (
-        <View className="bg-surface p-6 rounded-2xl items-center">
-          <Text className="text-muted text-sm text-center">
-            No meters assigned to this consumer.
-          </Text>
-        </View>
-      ) : (
-        meters.map((meter) => (
-          <Pressable
-            key={meter.id}
-            className="bg-surface rounded-2xl p-4 flex-row items-center justify-between mb-2.5"
-            onPress={() => router.push(`/admin-meter/${meter.id}` as any)}
-          >
-            <View>
-              <Text className="text-[15px] font-bold text-text">
-                {meter.meterNumber}
-              </Text>
-              <Text className="text-[11px] text-emerald mt-0.5 font-bold uppercase">
-                {meter.status}
-              </Text>
+      <View className="mb-6">
+        <Text className="text-base font-bold text-text mb-3">
+          Assigned Meters
+        </Text>
+        {meters.length === 0 ? (
+          <View className="bg-surface p-6 rounded-2xl">
+            <Text className="text-muted text-sm text-center">
+              No meters assigned
+            </Text>
+          </View>
+        ) : (
+          meters.map((meter) => (
+            <Pressable
+              key={meter.id}
+              className="bg-surface rounded-2xl p-4 flex-row items-center justify-between mb-2"
+              onPress={() => router.push(`/admin-meter/${meter.id}` as any)}
+            >
+              <View>
+                <Text className="text-[15px] font-bold text-text">
+                  {meter.meterNumber}
+                </Text>
+                <Text className="text-[11px] text-emerald mt-0.5 font-bold uppercase">
+                  {meter.status}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+            </Pressable>
+          ))
+        )}
+      </View>
+
+      {/* Billing History Section */}
+      <View className="mb-6">
+        <Text className="text-base font-bold text-text mb-3">Recent Bills</Text>
+        {bills.length === 0 ? (
+          <View className="bg-surface p-6 rounded-2xl">
+            <Text className="text-muted text-sm text-center">
+              No bills generated yet
+            </Text>
+          </View>
+        ) : (
+          bills.map((bill) => (
+            <View
+              key={bill.id}
+              className="bg-surface rounded-2xl p-4 flex-row items-center justify-between mb-2 border-l-4 border-indigo"
+            >
+              <View>
+                <Text className="text-[15px] font-bold text-text">
+                  ₹{bill.totalAmount.toLocaleString()}
+                </Text>
+                <Text className="text-[11px] text-muted mt-0.5">
+                  {new Date(bill.billingEnd).toLocaleDateString()}
+                </Text>
+              </View>
+              <Ionicons name="receipt-outline" size={18} color="#94a3b8" />
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-          </Pressable>
-        ))
-      )}
+          ))
+        )}
+      </View>
+
+      {/* Support Queries Section */}
+      <View className="mb-10">
+        <Text className="text-base font-bold text-text mb-3">
+          Support Tickets
+        </Text>
+        {queries.length === 0 ? (
+          <View className="bg-surface p-6 rounded-2xl">
+            <Text className="text-muted text-sm text-center">
+              No support queries found
+            </Text>
+          </View>
+        ) : (
+          queries.map((q) => (
+            <Pressable
+              key={q.id}
+              className="bg-surface rounded-2xl p-4 mb-2"
+              onPress={() => router.push(`/admin-query/${q.id}` as any)}
+            >
+              <View className="flex-row justify-between items-start mb-1.5">
+                <Text
+                  className="text-[14px] font-bold text-text flex-1 mr-2"
+                  numberOfLines={1}
+                >
+                  {q.queryText}
+                </Text>
+                <View
+                  className={`px-2 py-0.5 rounded-lg ${q.status === "PENDING" ? "bg-amber/10" : "bg-emerald/10"}`}
+                >
+                  <Text
+                    className={`text-[10px] font-bold ${q.status === "PENDING" ? "text-amber" : "text-emerald"}`}
+                  >
+                    {q.status}
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-[11px] text-dim">
+                Submitted {new Date(q.createdAt).toLocaleDateString()}
+              </Text>
+            </Pressable>
+          ))
+        )}
+      </View>
     </ScrollView>
   );
 }
