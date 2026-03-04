@@ -76,8 +76,8 @@ export const ROLE_PERMISSIONS: Record<ROLE_TYPE, readonly PermissionKey[]> = {
 /**
  * Helper to check if a specific role has a certain permission.
  */
-export function hasPermission(role: ROLE_TYPE | null | undefined, permission: PermissionKey): boolean {
-  if (!role) return false;
-  const perms = ROLE_PERMISSIONS[role];
+export function hasPermission(role: string | null | undefined, permission: PermissionKey): boolean {
+  if (!role || role === 'CONSUMER') return false;
+  const perms = ROLE_PERMISSIONS[role as ROLE_TYPE];
   return perms ? perms.includes(permission) : false;
 }
