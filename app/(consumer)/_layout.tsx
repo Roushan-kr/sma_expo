@@ -62,6 +62,13 @@ export default function ConsumerLayout() {
           }} 
         />
         <Drawer.Screen 
+          name="my-equipment" 
+          options={{ 
+            drawerLabel: 'My Equipment',
+            title: 'Connected Machines',
+          }} 
+        />
+        <Drawer.Screen 
           name="profile" 
           options={{ 
             drawerLabel: 'My Account',

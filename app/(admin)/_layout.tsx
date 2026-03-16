@@ -103,6 +103,19 @@ export default function AdminLayout() {
           }}
         />
         <Drawer.Screen
+          name="admin-equipment-sld"
+          options={{
+            drawerLabel: "Equipment Diagram",
+            title: "Equipment Visualization",
+            drawerItemStyle: !hasPermission(
+              currentRole as any,
+              Permission.METER_READ,
+            )
+              ? { display: "none" }
+              : {},
+          }}
+        />
+        <Drawer.Screen
           name="profile"
           options={{
             drawerLabel: "Settings",
