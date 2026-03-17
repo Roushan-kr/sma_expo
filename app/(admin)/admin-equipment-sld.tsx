@@ -8,15 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import {
-  Text,
-  IconButton,
-  Portal,
-  Dialog,
-  Button,
-  TextInput,
-  Menu,
-} from "react-native-paper";
+import { Text, IconButton, Portal, Dialog, Button, TextInput, Menu, useTheme } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Svg, { Path, Circle, Defs, Marker } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
@@ -36,6 +28,8 @@ const BUS_OFFSET = 40;
 export default function AdminEquipmentSLDScreen() {
   const insets = useSafeAreaInsets();
   const getToken = useStableToken();
+  const theme = useTheme();
+  const isDark = theme.dark;
 
   const [loading, setLoading] = useState(false);
   const [meters, setMeters] = useState<any[]>([]);
@@ -114,7 +108,9 @@ export default function AdminEquipmentSLDScreen() {
       const busY = startY + BUS_OFFSET;
       const endX = node.x + NODE_WIDTH / 2;
       const endY = node.y;
-      const color = node.equipment.status === "OPERATIONAL" ? "#10B981" : "#9CA3AF";
+      const color = node.equipment.status === "OPERATIONAL" 
+        ? (isDark ? "#10B981" : "#059669") 
+        : (isDark ? "#4B5563" : "#9CA3AF");
       return { startX, startY, busY, endX, endY, color };
     });
 
@@ -144,35 +140,59 @@ export default function AdminEquipmentSLDScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Header */}
       <View 
-        className="bg-white shadow-sm"
-        style={{ paddingTop: insets.top }}
+        style={{ 
+          paddingTop: insets.top,
+          backgroundColor: theme.colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "#1e293b" : "#f1f5f9",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 2,
+          elevation: 2,
+        }}
       >
         <View className="h-[60px] flex-row items-center justify-between px-5">
-          <Text className="text-xl font-extrabold text-slate-900">System Diagram</Text>
+          <Text variant="titleLarge" style={{ fontWeight: "800", color: theme.colors.onSurface }}>System Diagram</Text>
           <IconButton
             icon={isEditMode ? "check" : "pencil-outline"}
+            mode="contained-tonal"
             onPress={() => setIsEditMode(!isEditMode)}
           />
         </View>
       </View>
 
       {/* Meter Selector */}
-      <View className="p-4 bg-white border-b border-slate-200">
+      <View 
+        style={{ 
+          padding: 16, 
+          backgroundColor: theme.colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "#1e293b" : "#f1f5f9",
+        }}
+      >
         <Menu
           visible={meterMenuVisible}
           onDismiss={() => setMeterMenuVisible(false)}
           anchor={
             <TouchableOpacity
-              className="flex-row items-center justify-between bg-slate-100 p-3 rounded-xl"
+              style={{ 
+                flexDirection: "row", 
+                alignItems: "center", 
+                justifyContent: "space-between", 
+                backgroundColor: isDark ? "#1e293b" : "#f8fafc",
+                padding: 12,
+                borderRadius: 12,
+              }}
               onPress={() => setMeterMenuVisible(true)}
             >
-              <Text className="text-sm font-semibold text-slate-700">
+              <Text style={{ fontSize: 14, fontWeight: "600", color: theme.colors.onSurfaceVariant }}>
                 {meters.find((m) => m.id === selectedMeterId)?.meterNumber || "Select Meter"}
               </Text>
-              <MaterialCommunityIcons name="chevron-down" size={20} color="#6B7280" />
+              <MaterialCommunityIcons name="chevron-down" size={20} color={theme.colors.onSurfaceVariant} />
             </TouchableOpacity>
           }
         >
@@ -191,11 +211,20 @@ export default function AdminEquipmentSLDScreen() {
 
       {/* Edit Controls */}
       {isEditMode && (
-        <View className="flex-row items-center justify-between px-5 bg-blue-50 py-1">
-          <Text className="text-slate-700 font-medium">Columns: {numColumns}</Text>
+        <View 
+          style={{ 
+            flexDirection: "row", 
+            alignItems: "center", 
+            justifyContent: "space-between", 
+            paddingHorizontal: 20, 
+            backgroundColor: isDark ? "#1e3a8a" : "#eff6ff",
+            paddingVertical: 4,
+          }}
+        >
+          <Text style={{ color: isDark ? "#bfdbfe" : "#1e40af", fontWeight: "500" }}>Columns: {numColumns}</Text>
           <View className="flex-row items-center">
-            <IconButton icon="minus" onPress={() => setNumColumns(Math.max(1, numColumns - 1))} />
-            <IconButton icon="plus" onPress={() => setNumColumns(Math.min(4, numColumns + 1))} />
+            <IconButton icon="minus" size={20} onPress={() => setNumColumns(Math.max(1, numColumns - 1))} />
+            <IconButton icon="plus" size={20} onPress={() => setNumColumns(Math.min(4, numColumns + 1))} />
           </View>
         </View>
       )}
@@ -204,11 +233,11 @@ export default function AdminEquipmentSLDScreen() {
       <View className="flex-1">
         {loading ? (
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#6366f1" />
+            <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         ) : equipment.length === 0 ? (
           <View className="flex-1 justify-center items-center">
-            <Text className="text-slate-500">No equipment found for this meter.</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>No equipment found for this meter.</Text>
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -233,9 +262,9 @@ export default function AdminEquipmentSLDScreen() {
                 ))}
               </Svg>
 
-              {/* Root Node (Meter) */}
+               {/* Root Node (Meter) */}
               <LinearGradient
-                colors={["#1e293b", "#0f172a"]}
+                colors={isDark ? ["#334155", "#1e293b"] : ["#1e293b", "#0f172a"]}
                 style={{ 
                   left: layout.rootX, 
                   top: layout.rootY, 
@@ -246,9 +275,11 @@ export default function AdminEquipmentSLDScreen() {
                   alignItems: "center",
                   justifyContent: "center",
                   zIndex: 40,
+                  borderWidth: isDark ? 1 : 0,
+                  borderColor: "#475569",
                 }}
               >
-                <Text className="text-white font-bold text-sm">
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>
                   Meter: {meters.find((m) => m.id === selectedMeterId)?.meterNumber}
                 </Text>
               </LinearGradient>
@@ -275,29 +306,30 @@ export default function AdminEquipmentSLDScreen() {
         <Dialog 
           visible={detailsVisible} 
           onDismiss={() => setDetailsVisible(false)}
-          style={{ backgroundColor: "white", borderRadius: 16 }}
+          style={{ backgroundColor: theme.colors.surface, borderRadius: 24 }}
         >
-          <Dialog.Title className="text-xl font-bold">{selectedNode?.name}</Dialog.Title>
+          <Dialog.Title style={{ fontWeight: "700" }}>{selectedNode?.name}</Dialog.Title>
           <Dialog.Content>
             <View className="flex-row justify-between mb-3">
-              <Text className="font-bold text-slate-500">Status:</Text>
+              <Text style={{ fontWeight: "700", color: theme.colors.onSurfaceVariant }}>Status:</Text>
               <Text 
-                className={`font-semibold ${
-                  selectedNode?.status === "OPERATIONAL" ? "text-emerald-500" : "text-red-500"
-                }`}
+                style={{ 
+                  fontWeight: "600",
+                  color: selectedNode?.status === "OPERATIONAL" ? "#10B981" : "#EF4444"
+                }}
               >
                 {selectedNode?.status}
               </Text>
             </View>
             <View className="flex-row justify-between mb-3">
-              <Text className="font-bold text-slate-500">Consumption:</Text>
-              <Text className="text-slate-900 font-medium">
+              <Text style={{ fontWeight: "700", color: theme.colors.onSurfaceVariant }}>Consumption:</Text>
+              <Text style={{ color: theme.colors.onSurface, fontWeight: "500" }}>
                 {selectedNode?.energyConsumed.toFixed(2)} kW
               </Text>
             </View>
             <View className="flex-row justify-between mb-1">
-              <Text className="font-bold text-slate-500">Meter ID:</Text>
-              <Text className="text-slate-400 text-xs">
+              <Text style={{ fontWeight: "700", color: theme.colors.onSurfaceVariant }}>Meter ID:</Text>
+              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 11 }}>
                 {selectedNode?.meterId}
               </Text>
             </View>
@@ -305,6 +337,7 @@ export default function AdminEquipmentSLDScreen() {
           <Dialog.Actions>
             <Button 
               onPress={() => setDetailsVisible(false)}
+              mode="text"
               labelStyle={{ fontWeight: "700" }}
             >
               Close

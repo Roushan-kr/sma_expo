@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
-import { Text, Surface, IconButton } from "react-native-paper";
+import { Text, Surface, IconButton, useTheme } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 interface EquipmentNodeProps {
@@ -28,11 +28,19 @@ export default function EquipmentNode({
 }: EquipmentNodeProps) {
   const { equipment, x, y } = node;
   const isOnline = equipment.status === "OPERATIONAL";
+  const theme = useTheme();
+  const isDark = theme.dark;
 
   return (
     <View 
-      className="absolute z-30"
-      style={{ left: x, top: y, width: 180, height: 48 }}
+      style={{ 
+        position: "absolute",
+        zIndex: 30,
+        left: x, 
+        top: y, 
+        width: 180, 
+        height: 48 
+      }}
     >
       <TouchableOpacity
         activeOpacity={0.7}
@@ -40,29 +48,48 @@ export default function EquipmentNode({
         disabled={isEditMode}
       >
         <Surface 
-          elevation={2}
-          className={`rounded-lg p-2 bg-white border-[1.5px] ${
-            isOnline ? "border-emerald-500" : "border-gray-300"
-          }`}
+          elevation={isDark ? 0 : 1}
+          style={{
+            borderRadius: 12,
+            padding: 8,
+            backgroundColor: isDark ? "#1e293b" : "white",
+            borderWidth: 1.5,
+            borderColor: isOnline 
+              ? (isDark ? "#10B981" : "#10B981") 
+              : (isDark ? "#334155" : "#e2e8f0"),
+          }}
         >
-          <View className="flex-row items-center gap-2">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <MaterialCommunityIcons
               name="robot"
               size={20}
-              color={isOnline ? "#059669" : "#6B7280"}
+              color={isOnline ? "#10B981" : (isDark ? "#94a3b8" : "#64748b")}
             />
-            <View className="flex-1">
-              <Text className="text-[12px] font-bold text-gray-900" numberOfLines={1}>
+            <View style={{ flex: 1 }}>
+              <Text 
+                variant="labelMedium" 
+                style={{ 
+                  fontWeight: "700", 
+                  color: theme.colors.onSurface 
+                }} 
+                numberOfLines={1}
+              >
                 {equipment.name}
               </Text>
-              <Text className="text-[10px] text-gray-500">
+              <Text 
+                variant="labelSmall" 
+                style={{ color: theme.colors.onSurfaceVariant }}
+              >
                 {equipment.energyConsumed.toFixed(2)} kW
               </Text>
             </View>
             <View
-              className={`w-2 h-2 rounded-full ${
-                isOnline ? "bg-emerald-500" : "bg-red-500"
-              }`}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: isOnline ? "#10B981" : "#EF4444"
+              }}
             />
           </View>
         </Surface>
@@ -71,9 +98,18 @@ export default function EquipmentNode({
       {isEditMode && (
         <IconButton
           icon="move-resize"
-          size={20}
-          containerColor="white"
-          className="absolute -top-[15px] -right-[15px] border border-gray-200"
+          size={18}
+          mode="contained"
+          containerColor={theme.colors.surface}
+          iconColor={theme.colors.primary}
+          style={{
+            position: "absolute",
+            top: -12,
+            right: -12,
+            margin: 0,
+            borderWidth: 1,
+            borderColor: theme.colors.outlineVariant,
+          }}
           onPress={() => onPositionPress(node)}
         />
       )}
