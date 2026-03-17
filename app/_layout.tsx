@@ -5,6 +5,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { PaperProvider } from 'react-native-paper';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import FlashMessage from 'react-native-flash-message';
@@ -41,16 +42,18 @@ export default function RootLayout() {
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
         <ClerkLoaded>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <AuthHandler>
-              <Stack>
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(consumer)" options={{ headerShown: false }} />
-                <Stack.Screen name="(admin)" options={{ headerShown: false }} />
-              </Stack>
-            </AuthHandler>
-            <StatusBar style="auto" />
-            <FlashMessage position="top" />
+            <PaperProvider>
+              <AuthHandler>
+                <Stack>
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(consumer)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+                </Stack>
+              </AuthHandler>
+              <StatusBar style="auto" />
+              <FlashMessage position="top" />
+            </PaperProvider>
           </ThemeProvider>
         </ClerkLoaded>
       </ClerkProvider>
