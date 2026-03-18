@@ -1,23 +1,43 @@
-import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useRouter, useNavigation } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   Text,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { api } from '@/lib/api';
-import { useStableToken } from '@/hooks/useStableToken';
-import { useMeterStore } from '@/stores/useMeterStore';
-import { useRoleGuard } from '@/hooks/useRoleGuard';
+  RefreshControl,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  ZoomIn,
+} from "react-native-reanimated";
+import Svg, { Rect, Line } from "react-native-svg";
+import { useStableToken } from "@/hooks/useStableToken";
+import { useMeterStore } from "@/stores/useMeterStore";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
+const C = {
+  bg: "#040a1a",
+  surface: "#0b1a2f",
+  surface2: "#142840",
+  indigo: "#635cf1",
+  violet: "#7c3aed",
+  blue: "#38bdf8",
+  emerald: "#22c55e",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  text: "#e8f0fa",
+  muted: "#5e7490",
+  dim: "#1a2d42",
+};
 
-// ─── Types (matches Prisma SmartMeter model + relations) ─────────────────────
-
-export type MeterStatus = 'ACTIVE' | 'INACTIVE' | 'FAULTY' | 'DISCONNECTED';
+export type MeterStatus = "ACTIVE" | "INACTIVE" | "FAULTY" | "DISCONNECTED";
 
 export interface SmartMeter {
   id: string;
@@ -27,58 +47,65 @@ export interface SmartMeter {
   tariffId: string;
   createdAt: string;
   updatedAt: string;
-  // Included via API relation (latest MeterReading)
   lastReading?: {
     consumption: number;
     timestamp: string;
     voltage?: number | null;
     current?: number | null;
   } | null;
+  tariff?: any;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const STATUS_BADGE: Record<MeterStatus, string> = {
-  ACTIVE: 'bg-emerald-500/20 text-emerald-400',
-  INACTIVE: 'bg-slate-500/20 text-slate-400',
-  FAULTY: 'bg-red-500/20 text-red-400',
-  DISCONNECTED: 'bg-amber-500/20 text-amber-400',
+const STATUS_CONFIG: Record<
+  MeterStatus,
+  { color: string; iconName: keyof typeof Ionicons.glyphMap }
+> = {
+  ACTIVE: { color: C.emerald, iconName: "checkmark-circle" },
+  INACTIVE: { color: C.muted, iconName: "pause-circle" },
+  FAULTY: { color: C.rose, iconName: "warning" },
+  DISCONNECTED: { color: C.amber, iconName: "unlink-outline" as any },
 };
 
-function StatusBadge({ status }: { status: MeterStatus }) {
-  const cls = STATUS_BADGE[status] ?? 'bg-slate-500/20 text-slate-400';
-  const [bg, fg] = cls.split(' ');
-  return (
-    <View className={`px-2.5 py-0.5 rounded-full ${bg}`}>
-      <Text className={`text-xs font-semibold ${fg}`}>{status}</Text>
-    </View>
-  );
-}
-
-import Svg, { Rect, G, Text as SvgText, Line } from 'react-native-svg';
-
-function MeterConsumptionChart({ consumption = 0 }: { consumption: number }) {
-  // A tiny decorative bar chart since we only have `lastReading.consumption` 
-  // in the summary view (unless we fetch /aggregates per meter, which is heavy).
-  // We'll just show a visual representation of the current consumption vs a baseline.
-  const baseline = 20; // assumed avg daily
+function MiniChart({ consumption = 0 }: { consumption: number }) {
+  const baseline = 20;
   const max = Math.max(consumption, baseline * 1.5, 10);
   const W = 100;
-  const H = 40;
-  const barW = (consumption / max) * W;
-  const baseW = (baseline / max) * W;
+  const H = 36;
+  const barW = Math.max((consumption / max) * W, 4);
+  const baseX = (baseline / max) * W;
 
   return (
-    <View className="mt-2 mb-1">
-      <Text className="text-[10px] text-slate-500 mb-1 rounded font-medium uppercase tracking-wider">
-        Current Usage vs Avg
+    <View>
+      <Text
+        style={{
+          color: C.dim,
+          fontSize: 9,
+          fontWeight: "700",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          marginBottom: 4,
+        }}
+      >
+        Usage vs Avg
       </Text>
-      <Svg width={W} height={H} className="rounded-lg overflow-hidden">
-        {/* Baseline marker */}
-        <Line x1={baseW} y1={0} x2={baseW} y2={H} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2,2" />
-        
-        {/* Consumption bar */}
-        <Rect x={0} y={H / 4} width={barW} height={H / 2} fill="#6366f1" rx={4} />
+      <Svg width={W} height={H}>
+        <Line
+          x1={baseX}
+          y1={0}
+          x2={baseX}
+          y2={H}
+          stroke={C.amber}
+          strokeWidth="1"
+          strokeDasharray="2,2"
+        />
+        <Rect
+          x={0}
+          y={H / 4}
+          width={barW}
+          height={H / 2}
+          fill={C.indigo}
+          rx={4}
+        />
       </Svg>
     </View>
   );
@@ -87,91 +114,301 @@ function MeterConsumptionChart({ consumption = 0 }: { consumption: number }) {
 function MeterCard({
   meter,
   onPress,
+  index = 0,
 }: {
-  meter: SmartMeter & { tariff?: any }; // Extend type to include tariff
+  meter: SmartMeter;
   onPress: () => void;
+  index?: number;
 }) {
   const lastKwh = meter.lastReading?.consumption;
   const tariff = meter.tariff;
+  const cfg = STATUS_CONFIG[meter.status] ?? STATUS_CONFIG.INACTIVE;
 
   return (
-    <Pressable
-      className="bg-slate-800 border border-slate-700/50 rounded-2xl overflow-hidden mb-4 active:opacity-80"
-      onPress={onPress}
-    >
-      {/* Header: Meter Number & Status */}
-      <View className="p-4 bg-slate-800/80 border-b border-slate-700/50 flex-row items-center justify-between">
-        <View>
-          <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
-            METER
-          </Text>
-          <Text className="text-slate-50 font-mono text-lg font-bold">
-            {meter.meterNumber}
-          </Text>
-        </View>
-        <StatusBadge status={meter.status} />
-      </View>
-
-      {/* Body: Stats, Graph, Tariff */}
-      <View className="p-4">
-        <View className="flex-row justify-between items-end mb-4">
-          <View>
-            <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
-              Latest Reading
-            </Text>
-            <View className="flex-row items-baseline gap-1">
-              <Text className="text-3xl font-black text-indigo-400">
-                {lastKwh !== undefined && lastKwh !== null ? lastKwh : '—'}
+    <Animated.View entering={FadeInDown.duration(400).delay(150 + index * 60)}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? C.surface2 : C.surface,
+          borderRadius: 20,
+          overflow: "hidden",
+          marginBottom: 14,
+          borderWidth: 1,
+          borderColor: C.dim,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
+      >
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 18,
+            paddingBottom: 14,
+            borderBottomWidth: 1,
+            borderBottomColor: C.dim,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: `${cfg.color}14`,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="speedometer-outline" size={20} color={cfg.color} />
+            </View>
+            <View>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 10,
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  marginBottom: 2,
+                }}
+              >
+                Meter
               </Text>
-              <Text className="text-xs font-semibold text-slate-500">kWh</Text>
+              <Text
+                style={{
+                  color: C.text,
+                  fontSize: 17,
+                  fontWeight: "800",
+                  fontFamily: "monospace",
+                  letterSpacing: 1,
+                }}
+              >
+                {meter.meterNumber}
+              </Text>
             </View>
           </View>
-          
-          {/* Decorative mini-chart based on lastKwh */}
-          {lastKwh !== undefined && lastKwh !== null && (
-             <MeterConsumptionChart consumption={lastKwh} />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              backgroundColor: `${cfg.color}14`,
+              borderWidth: 1,
+              borderColor: `${cfg.color}25`,
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+            }}
+          >
+            <Ionicons name={cfg.iconName} size={12} color={cfg.color} />
+            <Text
+              style={{
+                color: cfg.color,
+                fontSize: 11,
+                fontWeight: "800",
+              }}
+            >
+              {meter.status}
+            </Text>
+          </View>
+        </View>
+
+        {/* Body */}
+        <View style={{ padding: 18 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              marginBottom: 16,
+            }}
+          >
+            <View>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 10,
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  marginBottom: 6,
+                }}
+              >
+                Latest Reading
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  gap: 4,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 32,
+                    fontWeight: "800",
+                    color: C.indigo,
+                    letterSpacing: -1,
+                  }}
+                >
+                  {lastKwh !== undefined && lastKwh !== null
+                    ? lastKwh.toFixed(1)
+                    : "—"}
+                </Text>
+                <Text
+                  style={{
+                    color: C.muted,
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                >
+                  kWh
+                </Text>
+              </View>
+            </View>
+            {lastKwh !== undefined && lastKwh !== null && (
+              <MiniChart consumption={lastKwh} />
+            )}
+          </View>
+
+          {/* Tariff */}
+          {tariff ? (
+            <View
+              style={{
+                backgroundColor: C.surface2,
+                borderRadius: 14,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: C.dim,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Ionicons name="pricetag-outline" size={12} color={C.muted} />
+                  <Text
+                    style={{
+                      color: C.muted,
+                      fontSize: 11,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Plan
+                  </Text>
+                </View>
+                <Text
+                  style={{ color: C.text, fontSize: 13, fontWeight: "700" }}
+                >
+                  {tariff.type}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: C.emerald,
+                    }}
+                  />
+                  <Text style={{ color: C.muted, fontSize: 11 }}>
+                    Unit:{" "}
+                    <Text
+                      style={{ color: C.text, fontWeight: "700" }}
+                    >
+                      ₹{tariff.unitRate}
+                    </Text>
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: C.amber,
+                    }}
+                  />
+                  <Text style={{ color: C.muted, fontSize: 11 }}>
+                    Fixed:{" "}
+                    <Text
+                      style={{ color: C.text, fontWeight: "700" }}
+                    >
+                      ₹{tariff.fixedCharge}
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 4,
+              }}
+            >
+              <Ionicons name="alert-circle-outline" size={14} color={C.dim} />
+              <Text style={{ color: C.dim, fontSize: 12, fontStyle: "italic" }}>
+                No active tariff plan
+              </Text>
+            </View>
           )}
         </View>
-
-        {/* Tariff Details */}
-        {tariff ? (
-          <View className="bg-slate-900/40 rounded-xl p-3 border border-slate-700/30 w-full mt-2">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Plan</Text>
-              <Text className="text-xs text-slate-300 font-bold">{tariff.type}</Text>
-            </View>
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-1.5">
-                <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <Text className="text-[11px] text-slate-400 font-medium tracking-wide">Unit Rate: <Text className="font-bold text-slate-200">₹{tariff.unitRate}</Text></Text>
-              </View>
-              <View className="flex-row items-center gap-1.5">
-                <View className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <Text className="text-[11px] text-slate-400 font-medium tracking-wide">Fixed: <Text className="font-bold text-slate-200">₹{tariff.fixedCharge}</Text></Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <Text className="text-[11px] text-slate-500 italic mt-2">No active tariff plan assigned</Text>
-        )}
-      </View>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
 export default function DashboardScreen() {
-  useRoleGuard(['CONSUMER']);
+  useRoleGuard(["CONSUMER"]);
 
   const { signOut, isLoaded } = useAuth();
   const getToken = useStableToken();
   const { user } = useUser();
   const router = useRouter();
-  const navigation: any = useNavigation();
 
-  const { meters, loading: metersLoading, error: metersError, loadMeters } = useMeterStore();
+  const {
+    meters,
+    loading: metersLoading,
+    error: metersError,
+    loadMeters,
+  } = useMeterStore();
   const [signingOut, setSigningOut] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -180,14 +417,23 @@ export default function DashboardScreen() {
         if (active && token) loadMeters(token);
       });
     }
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [isLoaded, getToken, loadMeters]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    const token = await getToken();
+    if (token) await loadMeters(token);
+    setRefreshing(false);
+  };
 
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
       await signOut();
-      router.replace('/(auth)/sign-in');
+      router.replace("/(auth)/sign-in");
     } finally {
       setSigningOut(false);
     }
@@ -195,90 +441,221 @@ export default function DashboardScreen() {
 
   if (!isLoaded) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-900">
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: C.bg,
+        }}
+      >
+        <ActivityIndicator size="large" color={C.indigo} />
       </View>
     );
   }
 
-  // Consumer uses phoneNumber (not phone)
-  const phone = user?.primaryPhoneNumber?.phoneNumber ?? user?.primaryEmailAddress?.emailAddress ?? 'Unknown';
+  const phone =
+    user?.primaryPhoneNumber?.phoneNumber ??
+    user?.primaryEmailAddress?.emailAddress ??
+    "Unknown";
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["bottom"]}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-        <View className="flex-row items-center gap-4">
-          <View>
-            <Text className="text-slate-400 text-sm">Signed in as</Text>
-            <Text className="text-slate-50 font-semibold text-base">{phone}</Text>
-          </View>
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(100)}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 20,
+          paddingTop: 8,
+          paddingBottom: 12,
+        }}
+      >
+        <View>
+          <Text style={{ color: C.muted, fontSize: 13 }}>Signed in as</Text>
+          <Text
+            style={{
+              color: C.text,
+              fontSize: 15,
+              fontWeight: "700",
+              marginTop: 2,
+            }}
+          >
+            {phone}
+          </Text>
         </View>
-        <View className="flex-row gap-2">
-          <Pressable
-            className="border border-indigo-600 rounded-xl px-4 py-2"
-            onPress={() => router.push({
-              pathname: '/dashboard' as any,
-              params: { tab: 'profile' },
-            })}
-            accessibilityRole="button"
-            accessibilityLabel="Profile"
-          >
-            <Text className="text-indigo-400 font-semibold text-sm">
-              Profile
-            </Text>
-          </Pressable>
-          <Pressable
-            className={`border border-indigo-600 rounded-xl px-4 py-2 ${signingOut ? 'opacity-50' : 'opacity-100'}`}
-            onPress={handleSignOut}
-            disabled={signingOut}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-          >
-            {signingOut ? (
-              <ActivityIndicator color="#6366f1" size="small" />
-            ) : (
-              <Text className="text-indigo-400 font-semibold text-sm">
+        <Pressable
+          onPress={handleSignOut}
+          disabled={signingOut}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: pressed ? C.surface2 : C.surface,
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderWidth: 1,
+            borderColor: C.dim,
+            opacity: signingOut ? 0.5 : 1,
+          })}
+        >
+          {signingOut ? (
+            <ActivityIndicator color={C.indigo} size="small" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={16} color={C.indigo} />
+              <Text
+                style={{ color: C.indigo, fontSize: 13, fontWeight: "700" }}
+              >
                 Sign Out
               </Text>
-            )}
-          </Pressable>
-        </View>
-      </View>
+            </>
+          )}
+        </Pressable>
+      </Animated.View>
 
-      <View className="px-5 pb-3">
-        <Text className="text-2xl font-bold text-slate-50">
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(180)}
+        style={{ paddingHorizontal: 20, paddingBottom: 12 }}
+      >
+        <Text
+          style={{
+            fontSize: 26,
+            fontWeight: "800",
+            color: C.text,
+            letterSpacing: -0.5,
+          }}
+        >
           My Smart Meters
         </Text>
-      </View>
+        <Text style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+          {meters.length} meter{meters.length !== 1 ? "s" : ""} linked
+        </Text>
+      </Animated.View>
 
-      <View className="flex-1 px-5">
-        {metersLoading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#6366f1" />
-            <Text className="text-slate-400 mt-3 text-sm">Loading meters…</Text>
+      <View style={{ flex: 1, paddingHorizontal: 20 }}>
+        {metersLoading && !refreshing ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Animated.View entering={ZoomIn.springify()}>
+              <View
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 20,
+                  backgroundColor: "rgba(99,92,241,0.08)",
+                  borderWidth: 1,
+                  borderColor: "rgba(99,92,241,0.15)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 14,
+                }}
+              >
+                <ActivityIndicator size="large" color={C.indigo} />
+              </View>
+            </Animated.View>
+            <Text style={{ color: C.muted, fontSize: 13 }}>
+              Loading meters…
+            </Text>
           </View>
         ) : metersError ? (
-          <View className="flex-1 items-center justify-center gap-3">
-            <Text className="text-red-400 text-sm text-center">
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+            }}
+          >
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 20,
+                backgroundColor: "rgba(244,63,94,0.08)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="speedometer-outline" size={32} color={C.rose} />
+            </View>
+            <Text
+              style={{
+                color: C.rose,
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
               {metersError}
             </Text>
             <Pressable
-              className="bg-indigo-500 rounded-xl px-5 py-2.5"
               onPress={() => {
-                getToken().then(t => { if (t) loadMeters(t); });
+                getToken().then((t) => {
+                  if (t) loadMeters(t);
+                });
               }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? C.surface2 : C.surface,
+                borderRadius: 14,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: C.dim,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              })}
             >
-              <Text className="text-white font-semibold text-sm">Retry</Text>
+              <Ionicons name="refresh" size={16} color={C.text} />
+              <Text style={{ color: C.text, fontWeight: "700" }}>Retry</Text>
             </Pressable>
           </View>
         ) : meters.length === 0 ? (
-          <View className="flex-1 items-center justify-center gap-2">
-            <Text className="text-4xl">🔌</Text>
-            <Text className="text-slate-300 font-semibold text-base">
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,
+                backgroundColor: "rgba(56,189,248,0.06)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="flash-outline" size={40} color={C.dim} />
+            </View>
+            <Text
+              style={{
+                color: C.text,
+                fontSize: 16,
+                fontWeight: "700",
+              }}
+            >
               No meters found
             </Text>
-            <Text className="text-slate-500 text-sm text-center">
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 13,
+                textAlign: "center",
+                paddingHorizontal: 24,
+              }}
+            >
               No smart meters are linked to your account yet.
             </Text>
           </View>
@@ -286,14 +663,22 @@ export default function DashboardScreen() {
           <FlatList
             data={meters}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               <MeterCard
                 meter={item}
+                index={index}
                 onPress={() => router.push(`/meter/${item.id}` as any)}
               />
             )}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 24 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={C.indigo}
+              />
+            }
           />
         )}
       </View>

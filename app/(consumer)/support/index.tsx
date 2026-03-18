@@ -1,253 +1,687 @@
-import { useStableToken } from '@/hooks/useStableToken';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   Text,
-  TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiRequest } from '@/api/common/apiRequest';
+  RefreshControl,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  ZoomIn,
+} from "react-native-reanimated";
+import Svg, { Rect, Line } from "react-native-svg";
+import { useStableToken } from "@/hooks/useStableToken";
+import { useMeterStore } from "@/stores/useMeterStore";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
-// ─── Types (match Prisma CustomerQuery exactly) ────────────────────────────────
+const C = {
+  bg: "#040a1a",
+  surface: "#0b1a2f",
+  surface2: "#142840",
+  indigo: "#635cf1",
+  violet: "#7c3aed",
+  blue: "#38bdf8",
+  emerald: "#22c55e",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  text: "#e8f0fa",
+  muted: "#5e7490",
+  dim: "#1a2d42",
+};
 
-/**
- * QueryStatus enum from schema:
- *   PENDING | AI_REVIEWED | RESOLVED | REJECTED
- *
- * Note: no 'subject' field — schema only has queryText
- */
-type QueryStatus = 'PENDING' | 'AI_REVIEWED' | 'RESOLVED' | 'REJECTED';
+export type MeterStatus = "ACTIVE" | "INACTIVE" | "FAULTY" | "DISCONNECTED";
 
-interface CustomerQuery {
+export interface SmartMeter {
   id: string;
-  consumerId: string;
-  queryText: string;      
-  aiCategory: string | null;
-  aiConfidence: number | null;
-  status: QueryStatus;
-  adminReply: string | null;
-  reviewedBy: string | null;
+  meterNumber: string;
+  status: MeterStatus;
+  consumerId?: string;
+  tariffId: string;
   createdAt: string;
   updatedAt: string;
+  lastReading?: {
+    consumption: number;
+    timestamp: string;
+    voltage?: number | null;
+    current?: number | null;
+  } | null;
+  tariff?: any;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const STATUS_STYLES: Record<QueryStatus, string> = {
-  PENDING: 'bg-amber-500/20 text-amber-400',
-  AI_REVIEWED: 'bg-blue-500/20 text-blue-400',
-  RESOLVED: 'bg-emerald-500/20 text-emerald-400',
-  REJECTED: 'bg-red-500/20 text-red-400',
+const STATUS_CONFIG: Record<
+  MeterStatus,
+  { color: string; iconName: keyof typeof Ionicons.glyphMap }
+> = {
+  ACTIVE: { color: C.emerald, iconName: "checkmark-circle" },
+  INACTIVE: { color: C.muted, iconName: "pause-circle" },
+  FAULTY: { color: C.rose, iconName: "warning" },
+  DISCONNECTED: { color: C.amber, iconName: "unlink-outline" as any },
 };
 
-const STATUS_LABEL: Record<QueryStatus, string> = {
-  PENDING: 'Pending',
-  AI_REVIEWED: 'AI Reviewed',
-  RESOLVED: 'Resolved',
-  REJECTED: 'Rejected',
-};
+function MiniChart({ consumption = 0 }: { consumption: number }) {
+  const baseline = 20;
+  const max = Math.max(consumption, baseline * 1.5, 10);
+  const W = 100;
+  const H = 36;
+  const barW = Math.max((consumption / max) * W, 4);
+  const baseX = (baseline / max) * W;
 
-function StatusBadge({ status }: { status: QueryStatus }) {
-  const cls = STATUS_STYLES[status] ?? 'bg-slate-500/20 text-slate-400';
-  const [bg, fg] = cls.split(' ');
   return (
-    <View className={`px-2.5 py-0.5 rounded-full ${bg}`}>
-      <Text className={`text-xs font-semibold ${fg}`}>
-        {STATUS_LABEL[status] ?? status}
+    <View>
+      <Text
+        style={{
+          color: C.dim,
+          fontSize: 9,
+          fontWeight: "700",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          marginBottom: 4,
+        }}
+      >
+        Usage vs Avg
       </Text>
+      <Svg width={W} height={H}>
+        <Line
+          x1={baseX}
+          y1={0}
+          x2={baseX}
+          y2={H}
+          stroke={C.amber}
+          strokeWidth="1"
+          strokeDasharray="2,2"
+        />
+        <Rect
+          x={0}
+          y={H / 4}
+          width={barW}
+          height={H / 2}
+          fill={C.indigo}
+          rx={4}
+        />
+      </Svg>
     </View>
   );
 }
 
-function QueryCard({ query }: { query: CustomerQuery }) {
+function MeterCard({
+  meter,
+  onPress,
+  index = 0,
+}: {
+  meter: SmartMeter;
+  onPress: () => void;
+  index?: number;
+}) {
+  const lastKwh = meter.lastReading?.consumption;
+  const tariff = meter.tariff;
+  const cfg = STATUS_CONFIG[meter.status] ?? STATUS_CONFIG.INACTIVE;
+
   return (
-    <View className="bg-slate-800 rounded-2xl p-4 mb-3 gap-2">
-      <View className="flex-row items-start justify-between gap-2">
-        <Text className="text-slate-50 font-semibold text-sm flex-1" numberOfLines={3}>
-          {query.queryText}
-        </Text>
-        <StatusBadge status={query.status} />
-      </View>
-
-      {query.aiCategory ? (
-        <Text className="text-slate-500 text-xs">
-          AI Category: <Text className="text-slate-400">{query.aiCategory}</Text>
-          {query.aiConfidence != null
-            ? ` (${(query.aiConfidence * 100).toFixed(0)}%)`
-            : ''}
-        </Text>
-      ) : null}
-
-      {query.adminReply ? (
-        <View className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-3 mt-1">
-          <Text className="text-indigo-300 text-xs font-semibold mb-1">Admin Reply</Text>
-          <Text className="text-slate-300 text-xs">{query.adminReply}</Text>
+    <Animated.View entering={FadeInDown.duration(400).delay(150 + index * 60)}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? C.surface2 : C.surface,
+          borderRadius: 20,
+          overflow: "hidden",
+          marginBottom: 14,
+          borderWidth: 1,
+          borderColor: C.dim,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
+      >
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 18,
+            paddingBottom: 14,
+            borderBottomWidth: 1,
+            borderBottomColor: C.dim,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: `${cfg.color}14`,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="speedometer-outline" size={20} color={cfg.color} />
+            </View>
+            <View>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 10,
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  marginBottom: 2,
+                }}
+              >
+                Meter
+              </Text>
+              <Text
+                style={{
+                  color: C.text,
+                  fontSize: 17,
+                  fontWeight: "800",
+                  fontFamily: "monospace",
+                  letterSpacing: 1,
+                }}
+              >
+                {meter.meterNumber}
+              </Text>
+            </View>
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              backgroundColor: `${cfg.color}14`,
+              borderWidth: 1,
+              borderColor: `${cfg.color}25`,
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+            }}
+          >
+            <Ionicons name={cfg.iconName} size={12} color={cfg.color} />
+            <Text
+              style={{
+                color: cfg.color,
+                fontSize: 11,
+                fontWeight: "800",
+              }}
+            >
+              {meter.status}
+            </Text>
+          </View>
         </View>
-      ) : null}
 
-      <Text className="text-slate-600 text-xs">
-        {new Date(query.createdAt).toLocaleDateString('en-IN')}
-      </Text>
-    </View>
+        {/* Body */}
+        <View style={{ padding: 18 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              marginBottom: 16,
+            }}
+          >
+            <View>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 10,
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  marginBottom: 6,
+                }}
+              >
+                Latest Reading
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  gap: 4,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 32,
+                    fontWeight: "800",
+                    color: C.indigo,
+                    letterSpacing: -1,
+                  }}
+                >
+                  {lastKwh !== undefined && lastKwh !== null
+                    ? lastKwh.toFixed(1)
+                    : "—"}
+                </Text>
+                <Text
+                  style={{
+                    color: C.muted,
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                >
+                  kWh
+                </Text>
+              </View>
+            </View>
+            {lastKwh !== undefined && lastKwh !== null && (
+              <MiniChart consumption={lastKwh} />
+            )}
+          </View>
+
+          {/* Tariff */}
+          {tariff ? (
+            <View
+              style={{
+                backgroundColor: C.surface2,
+                borderRadius: 14,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: C.dim,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Ionicons name="pricetag-outline" size={12} color={C.muted} />
+                  <Text
+                    style={{
+                      color: C.muted,
+                      fontSize: 11,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Plan
+                  </Text>
+                </View>
+                <Text
+                  style={{ color: C.text, fontSize: 13, fontWeight: "700" }}
+                >
+                  {tariff.type}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: C.emerald,
+                    }}
+                  />
+                  <Text style={{ color: C.muted, fontSize: 11 }}>
+                    Unit:{" "}
+                    <Text
+                      style={{ color: C.text, fontWeight: "700" }}
+                    >
+                      ₹{tariff.unitRate}
+                    </Text>
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: C.amber,
+                    }}
+                  />
+                  <Text style={{ color: C.muted, fontSize: 11 }}>
+                    Fixed:{" "}
+                    <Text
+                      style={{ color: C.text, fontWeight: "700" }}
+                    >
+                      ₹{tariff.fixedCharge}
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 4,
+              }}
+            >
+              <Ionicons name="alert-circle-outline" size={14} color={C.dim} />
+              <Text style={{ color: C.dim, fontSize: 12, fontStyle: "italic" }}>
+                No active tariff plan
+              </Text>
+            </View>
+          )}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+export default function DashboardScreen() {
+  useRoleGuard(["CONSUMER"]);
 
-export default function SupportScreen() {
+  const { signOut, isLoaded } = useAuth();
   const getToken = useStableToken();
+  const { user } = useUser();
+  const router = useRouter();
 
-  const [queries, setQueries] = useState<CustomerQuery[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    meters,
+    loading: metersLoading,
+    error: metersError,
+    loadMeters,
+  } = useMeterStore();
+  const [signingOut, setSigningOut] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [showForm, setShowForm] = useState(false);
-  const [queryText, setQueryText] = useState('');  // matches schema field name
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const fetchQueries = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Authentication token missing');
-      
-      const res = await apiRequest<any>('/api/support/me', {
-        headers: { Authorization: `Bearer ${token}` },
+  useEffect(() => {
+    let active = true;
+    if (isLoaded) {
+      getToken().then((token) => {
+        if (active && token) loadMeters(token);
       });
-      const inner = res.data;
-      const data: CustomerQuery[] = Array.isArray(inner)
-        ? inner
-        : Array.isArray(inner?.data)
-          ? inner.data
-          : [];
-      setQueries(data);
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to load queries.');
-    } finally {
-      setLoading(false);
     }
-  }, [getToken]);
+    return () => {
+      active = false;
+    };
+  }, [isLoaded, getToken, loadMeters]);
 
-  useEffect(() => { fetchQueries(); }, [fetchQueries]);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    const token = await getToken();
+    if (token) await loadMeters(token);
+    setRefreshing(false);
+  };
 
-  const handleSubmit = async () => {
-    if (!queryText.trim()) {
-      setSubmitError('Please describe your issue.');
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
+  const handleSignOut = async () => {
+    setSigningOut(true);
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Authentication token missing');
-      
-      await apiRequest(
-        '/api/support',
-        { 
-          method: 'POST',
-          body: { queryText: queryText.trim() },
-          headers: { Authorization: `Bearer ${token}` } 
-        }
-      );
-      setQueryText('');
-      setShowForm(false);
-      fetchQueries();
-    } catch (err: any) {
-      setSubmitError(err?.message ?? 'Failed to submit query.');
+      await signOut();
+      router.replace("/(auth)/sign-in");
     } finally {
-      setSubmitting(false);
+      setSigningOut(false);
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-slate-900"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <SafeAreaView className="flex-1">
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-          <Pressable
-            className="bg-indigo-500 rounded-xl px-4 py-2"
-            onPress={() => { setShowForm((v) => !v); setSubmitError(null); }}
-          >
-            <Text className="text-white text-sm font-semibold">
-              {showForm ? 'Cancel' : '+ New Query'}
-            </Text>
-          </Pressable>
-        </View>
+  if (!isLoaded) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: C.bg,
+        }}
+      >
+        <ActivityIndicator size="large" color={C.indigo} />
+      </View>
+    );
+  }
 
-        {/* New query form — sends { queryText } */}
-        {showForm ? (
-          <View className="mx-5 bg-slate-800 rounded-2xl p-4 mb-4 gap-3">
-            <Text className="text-slate-200 font-semibold text-sm">Describe your issue</Text>
-            <TextInput
-              className="bg-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 min-h-[100px]"
-              placeholder="Type your query here…"
-              placeholderTextColor="#64748b"
-              value={queryText}
-              onChangeText={setQueryText}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              editable={!submitting}
-            />
-            {submitError ? (
-              <Text className="text-red-400 text-xs">{submitError}</Text>
-            ) : null}
-            <Pressable
-              className={`bg-indigo-500 rounded-xl py-3 items-center ${submitting ? 'opacity-50' : 'opacity-100'}`}
-              onPress={handleSubmit}
-              disabled={submitting}
+  const phone =
+    user?.primaryPhoneNumber?.phoneNumber ??
+    user?.primaryEmailAddress?.emailAddress ??
+    "Unknown";
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["bottom"]}>
+      {/* Header */}
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(100)}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 20,
+          paddingTop: 8,
+          paddingBottom: 12,
+        }}
+      >
+        <View>
+          <Text style={{ color: C.muted, fontSize: 13 }}>Signed in as</Text>
+          <Text
+            style={{
+              color: C.text,
+              fontSize: 15,
+              fontWeight: "700",
+              marginTop: 2,
+            }}
+          >
+            {phone}
+          </Text>
+        </View>
+        <Pressable
+          onPress={handleSignOut}
+          disabled={signingOut}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: pressed ? C.surface2 : C.surface,
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderWidth: 1,
+            borderColor: C.dim,
+            opacity: signingOut ? 0.5 : 1,
+          })}
+        >
+          {signingOut ? (
+            <ActivityIndicator color={C.indigo} size="small" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={16} color={C.indigo} />
+              <Text
+                style={{ color: C.indigo, fontSize: 13, fontWeight: "700" }}
+              >
+                Sign Out
+              </Text>
+            </>
+          )}
+        </Pressable>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(180)}
+        style={{ paddingHorizontal: 20, paddingBottom: 12 }}
+      >
+        <Text
+          style={{
+            fontSize: 26,
+            fontWeight: "800",
+            color: C.text,
+            letterSpacing: -0.5,
+          }}
+        >
+          My Smart Meters
+        </Text>
+        <Text style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+          {meters.length} meter{meters.length !== 1 ? "s" : ""} linked
+        </Text>
+      </Animated.View>
+
+      <View style={{ flex: 1, paddingHorizontal: 20 }}>
+        {metersLoading && !refreshing ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Animated.View entering={ZoomIn.springify()}>
+              <View
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 20,
+                  backgroundColor: "rgba(99,92,241,0.08)",
+                  borderWidth: 1,
+                  borderColor: "rgba(99,92,241,0.15)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 14,
+                }}
+              >
+                <ActivityIndicator size="large" color={C.indigo} />
+              </View>
+            </Animated.View>
+            <Text style={{ color: C.muted, fontSize: 13 }}>
+              Loading meters…
+            </Text>
+          </View>
+        ) : metersError ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+            }}
+          >
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 20,
+                backgroundColor: "rgba(244,63,94,0.08)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              {submitting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text className="text-white font-semibold text-sm">Submit</Text>
-              )}
+              <Ionicons name="speedometer-outline" size={32} color={C.rose} />
+            </View>
+            <Text
+              style={{
+                color: C.rose,
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              {metersError}
+            </Text>
+            <Pressable
+              onPress={() => {
+                getToken().then((t) => {
+                  if (t) loadMeters(t);
+                });
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? C.surface2 : C.surface,
+                borderRadius: 14,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: C.dim,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              })}
+            >
+              <Ionicons name="refresh" size={16} color={C.text} />
+              <Text style={{ color: C.text, fontWeight: "700" }}>Retry</Text>
             </Pressable>
           </View>
-        ) : null}
-
-        {/* List */}
-        <View className="flex-1 px-5">
-          {loading ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator size="large" color="#6366f1" />
+        ) : meters.length === 0 ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,
+                backgroundColor: "rgba(56,189,248,0.06)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="flash-outline" size={40} color={C.dim} />
             </View>
-          ) : error ? (
-            <View className="flex-1 items-center justify-center gap-3">
-              <Text className="text-red-400 text-sm text-center">{error}</Text>
-              <Pressable className="bg-indigo-500 rounded-xl px-5 py-2.5" onPress={fetchQueries}>
-                <Text className="text-white font-semibold text-sm">Retry</Text>
-              </Pressable>
-            </View>
-          ) : queries.length === 0 ? (
-            <View className="flex-1 items-center justify-center gap-2">
-              <Text className="text-4xl">💬</Text>
-              <Text className="text-slate-300 font-semibold">No queries yet</Text>
-              <Text className="text-slate-500 text-sm text-center">
-                Tap "+ New Query" to raise a support request.
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={queries}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <QueryCard query={item} />}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 24 }}
-            />
-          )}
-        </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+            <Text
+              style={{
+                color: C.text,
+                fontSize: 16,
+                fontWeight: "700",
+              }}
+            >
+              No meters found
+            </Text>
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 13,
+                textAlign: "center",
+                paddingHorizontal: 24,
+              }}
+            >
+              No smart meters are linked to your account yet.
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={meters}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => (
+              <MeterCard
+                meter={item}
+                index={index}
+                onPress={() => router.push(`/meter/${item.id}` as any)}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={C.indigo}
+              />
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
