@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -9,12 +8,15 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStableToken } from '@/hooks/useStableToken';
 import { useNavigation } from 'expo-router';
 import { apiRequest } from '@/api/common/apiRequest';
+import { useLogout } from '@/hooks/useLogout';
 
 export default function ConsumerProfileScreen() {
+  const { handleLogout } = useLogout();
   const getToken = useStableToken();
   const navigation: any = useNavigation();
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useAuthStore();
@@ -209,6 +211,16 @@ export default function ConsumerProfileScreen() {
                ))}
              </View>
           )}
+        </View>
+
+        {/* Logout Button */}
+        <View className="mt-8 mb-4">
+          <Pressable
+            className="bg-rose-500/10 border border-rose-500/20 rounded-xl py-4 w-full items-center active:opacity-75"
+            onPress={handleLogout}
+          >
+            <Text className="text-rose-400 font-bold text-base">Sign Out</Text>
+          </Pressable>
         </View>
 
       </ScrollView>

@@ -1,5 +1,6 @@
 import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuth } from '@clerk/clerk-expo';
 import { ActivityIndicator, View, Text } from 'react-native';
 
@@ -30,9 +31,10 @@ export default function AppLayout() {
 
   return (
     <RoleProvider>
-      <Drawer
-        drawerContent={(props) => <CustomDrawerContent {...props} />}
-        screenOptions={{
+      <GestureHandlerRootView style={{flex: 1}}>
+        <Drawer
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          screenOptions={{
           headerStyle: { backgroundColor: '#0f172a' },
           headerTintColor: '#f8fafc',
           drawerStyle: { backgroundColor: '#1e293b' },
@@ -132,6 +134,7 @@ export default function AppLayout() {
           }} 
         />
       </Drawer>
+      </GestureHandlerRootView>
     </RoleProvider>
   );
 }

@@ -12,11 +12,11 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, G, Line, Rect, Text as SvgText } from "react-native-svg";
 import { apiRequest } from "@/api/common/apiRequest";
 import { ROLE_TYPE } from "@/types/api.types";

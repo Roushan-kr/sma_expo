@@ -5,10 +5,10 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  SafeAreaView,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/api';
 import { useStableToken } from '@/hooks/useStableToken';
 import { useMeterStore } from '@/stores/useMeterStore';

@@ -1,9 +1,12 @@
 import React from "react";
-import { SafeAreaView, View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Pressable } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUser as useClerkUser } from "@clerk/clerk-expo";
+import { useLogout } from "@/hooks/useLogout";
 
 export default function AdminProfileScreen() {
+  const { handleLogout } = useLogout();
   const { user: clerkUser } = useClerkUser();
   const { profile, loading, error } = useAuthStore();
 
@@ -100,6 +103,15 @@ export default function AdminProfileScreen() {
           Profile management for admins is handled via the state/board
           management portal.
         </Text>
+      </View>
+
+      <View className="mt-6">
+        <Pressable
+          className="bg-rose/10 border border-rose/20 rounded-xl py-4 w-full items-center active:opacity-75"
+          onPress={handleLogout}
+        >
+          <Text className="text-rose font-bold text-base">Sign Out</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

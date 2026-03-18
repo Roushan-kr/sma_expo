@@ -1,8 +1,6 @@
 import { Drawer } from "expo-router/drawer";
-import {
-  DrawerContentScrollView,
-  DrawerItemList,
-} from "@react-navigation/drawer";
+import { DrawerContentScrollView, DrawerItemList } from "@react-navigation/drawer";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuth } from "@clerk/clerk-expo";
 import { ActivityIndicator, View, Text } from "react-native";
 import React from "react";
@@ -30,11 +28,12 @@ export default function AdminLayout() {
 
   return (
     <RoleProvider>
-      <Drawer
-        drawerContent={(props) => (
-          <CustomDrawerContent role={currentRole} {...props} />
-        )}
-        screenOptions={{
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Drawer
+          drawerContent={(props) => (
+            <CustomDrawerContent role={currentRole} {...props} />
+          )}
+          screenOptions={{
           headerStyle: { backgroundColor: "#0f172a" },
           headerTintColor: "#f8fafc",
           drawerStyle: { backgroundColor: "#1e293b", width: 280 },
@@ -146,6 +145,7 @@ export default function AdminLayout() {
           }}
         />
       </Drawer>
+      </GestureHandlerRootView>
     </RoleProvider>
   );
 }
