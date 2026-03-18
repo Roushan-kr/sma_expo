@@ -6,18 +6,41 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  SlideInDown,
+  ZoomIn,
+} from "react-native-reanimated";
+import { Svg, Rect, G, Text as SvgText, Line } from "react-native-svg";
 import { apiRequest } from "@/api/common/apiRequest";
 import { ROLE_TYPE } from "@/types/api.types";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
-import { Svg, Rect, G, Text as SvgText } from "react-native-svg";
+
+const C = {
+  bg: "#040a1a",
+  surface: "#0b1a2f",
+  surface2: "#142840",
+  indigo: "#635cf1",
+  violet: "#7c3aed",
+  emerald: "#22c55e",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  blue: "#38bdf8",
+  text: "#e8f0fa",
+  muted: "#5e7490",
+  dim: "#1a2d42",
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +75,10 @@ interface MonthlyStat {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtCcy(n: number) {
-  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `₹${n.toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 function fmtDateRange(start: string, end: string) {
@@ -68,26 +94,79 @@ function fmtDateRange(start: string, end: string) {
   return `${s} – ${e}`;
 }
 
-// ─── Bar Chart Component ──────────────────────────────────────────────────
+// ─── Bar Chart ────────────────────────────────────────────────────────────────
 
 function BarChart({ data, title }: { data: MonthlyStat[]; title: string }) {
   const width = 320;
-  const height = 120;
-  const barWidth = 30;
-  const gap = 15;
+  const height = 130;
+  const barWidth = 28;
+  const gap = 16;
   const maxRevenue = Math.max(...data.map((d) => d.revenue), 1000);
 
   return (
-    <View className="bg-surface rounded-3xl p-5 mb-5 shadow-sm">
-      <Text className="text-[10px] text-muted font-bold uppercase mb-4">
-        {title}
-      </Text>
+    <View
+      style={{
+        backgroundColor: C.surface,
+        borderRadius: 20,
+        padding: 20,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: C.dim,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        <View
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            backgroundColor: "rgba(99,92,241,0.1)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="bar-chart-outline" size={14} color={C.indigo} />
+        </View>
+        <Text
+          style={{
+            fontSize: 11,
+            color: C.muted,
+            fontWeight: "700",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          {title}
+        </Text>
+      </View>
       <Svg width={width} height={height}>
+        {[0, 0.5, 1].map((t) => {
+          const y = height - 22 - (height - 34) * t;
+          return (
+            <Line
+              key={t}
+              x1={0}
+              y1={y}
+              x2={width}
+              y2={y}
+              stroke={C.dim}
+              strokeWidth={0.5}
+              strokeDasharray="4,4"
+            />
+          );
+        })}
         <G>
           {data.map((item, i) => {
-            const barHeight = (item.revenue / maxRevenue) * (height - 20);
+            const barHeight = (item.revenue / maxRevenue) * (height - 34);
             const x = i * (barWidth + gap);
-            const y = height - 20 - barHeight;
+            const y = height - 22 - barHeight;
             return (
               <G key={item.month}>
                 <Rect
@@ -95,15 +174,16 @@ function BarChart({ data, title }: { data: MonthlyStat[]; title: string }) {
                   y={y}
                   width={barWidth}
                   height={barHeight}
-                  fill="#6366f1"
+                  fill={C.indigo}
                   rx={6}
                 />
                 <SvgText
                   x={x + barWidth / 2}
-                  y={height - 2}
-                  fontSize="8"
-                  fill="#94a3b8"
+                  y={height - 4}
+                  fontSize="9"
+                  fill={C.muted}
                   textAnchor="middle"
+                  fontWeight="600"
                 >
                   {item.month}
                 </SvgText>
@@ -116,7 +196,7 @@ function BarChart({ data, title }: { data: MonthlyStat[]; title: string }) {
   );
 }
 
-// ─── BillCard ─────────────────────────────────────────────────────────────────
+// ─── Bill Card ────────────────────────────────────────────────────────────────
 
 function BillCard({
   report,
@@ -126,31 +206,89 @@ function BillCard({
   onDetail: (id: string) => void;
 }) {
   return (
-    <View className="bg-surface rounded-[24px] p-5 mb-3 space-y-3.5 shadow-sm border border-white/5">
-      <View className="flex-row justify-between items-start">
-        <View className="flex-1">
-          <Text className="text-[15px] font-bold text-text">
+    <Pressable
+      onPress={() =>
+        report.meter?.consumerId && onDetail(report.meter.consumerId)
+      }
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? C.surface2 : C.surface,
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: C.dim,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
+    >
+      {/* header */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 14,
+        }}
+      >
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: C.text }}>
             {report.meter?.consumer?.name ??
               report.meter?.meterNumber ??
               "Unknown"}
           </Text>
-          <Text className="text-[11px] text-muted mt-0.5">
-            {report.meter?.meterNumber} ·{" "}
-            {fmtDateRange(report.billingStart, report.billingEnd)}
-          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 4,
+            }}
+          >
+            <Ionicons name="speedometer-outline" size={12} color={C.muted} />
+            <Text style={{ fontSize: 12, color: C.muted }}>
+              {report.meter?.meterNumber}
+            </Text>
+            <Text style={{ color: C.dim }}>·</Text>
+            <Text style={{ fontSize: 12, color: C.muted }}>
+              {fmtDateRange(report.billingStart, report.billingEnd)}
+            </Text>
+          </View>
         </View>
         <View
-          className={`px-2.5 py-1 rounded-full ${report.isLatest ? "bg-indigo/10" : "bg-amber/10"}`}
+          style={{
+            backgroundColor: report.isLatest
+              ? "rgba(99,92,241,0.1)"
+              : "rgba(245,158,11,0.1)",
+            borderWidth: 1,
+            borderColor: report.isLatest
+              ? "rgba(99,92,241,0.2)"
+              : "rgba(245,158,11,0.2)",
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+          }}
         >
           <Text
-            className={`text-[10px] font-bold ${report.isLatest ? "text-indigo" : "text-amber"}`}
+            style={{
+              fontSize: 10,
+              fontWeight: "800",
+              color: report.isLatest ? C.indigo : C.amber,
+            }}
           >
             {report.isLatest ? "LATEST" : `v${report.version}`}
           </Text>
         </View>
       </View>
 
-      <View className="flex-row items-center pt-2">
+      {/* breakdown */}
+      <View
+        style={{
+          flexDirection: "row",
+          backgroundColor: C.surface2,
+          borderRadius: 12,
+          padding: 12,
+          marginBottom: 14,
+        }}
+      >
         {[
           { label: "Energy", value: fmtCcy(report.energyCharge) },
           { label: "Fixed", value: fmtCcy(report.fixedCharge) },
@@ -158,36 +296,77 @@ function BillCard({
             ? [{ label: "Tax", value: fmtCcy(report.taxAmount) }]
             : []),
         ].map((item) => (
-          <View key={item.label} className="flex-1">
-            <Text className="text-[10px] text-muted font-bold uppercase">
+          <View key={item.label} style={{ flex: 1, alignItems: "center" }}>
+            <Text
+              style={{
+                fontSize: 10,
+                color: C.muted,
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
               {item.label}
             </Text>
-            <Text className="text-[13px] text-text font-semibold mt-0.5">
+            <Text
+              style={{
+                fontSize: 14,
+                color: C.text,
+                fontWeight: "700",
+                marginTop: 4,
+              }}
+            >
               {item.value}
             </Text>
           </View>
         ))}
       </View>
 
-      <View className="flex-row justify-between items-center py-1">
+      {/* total */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <View>
-          <Text className="text-[11px] text-dim">
-            {report.totalUnits.toFixed(1)} Unit(s)
-          </Text>
-          <Text className="text-[20px] font-extrabold text-text mt-0.5">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="flash" size={12} color={C.blue} />
+            <Text style={{ fontSize: 12, color: C.muted }}>
+              {report.totalUnits.toFixed(1)} Units
+            </Text>
+          </View>
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: "800",
+              color: C.text,
+              marginTop: 2,
+              letterSpacing: -0.5,
+            }}
+          >
             ₹{report.totalAmount.toLocaleString()}
           </Text>
         </View>
-        <Pressable
-          className="bg-surface2 rounded-xl p-2.5"
-          onPress={() =>
-            report.meter?.consumerId && onDetail(report.meter.consumerId)
-          }
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            backgroundColor: C.surface2,
+            borderRadius: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+          }}
         >
-          <Text className="text-[11px] text-muted font-bold">DETAILS</Text>
-        </Pressable>
+          <Text style={{ color: C.muted, fontSize: 12, fontWeight: "700" }}>
+            Details
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={C.muted} />
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -216,6 +395,7 @@ function GenerateBillModal({
   const [end, setEnd] = useState(lastOfMonth);
   const [taxRate, setTaxRate] = useState("18");
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!meterId.trim()) {
@@ -249,35 +429,133 @@ function GenerateBillModal({
     label: string,
     value: string,
     onChange: (v: string) => void,
-    placeholder?: string,
+    placeholder: string,
+    iconName: keyof typeof Ionicons.glyphMap,
+    fieldKey: string,
   ) => (
-    <View className="space-y-1.5">
-      <Text className="text-[11px] text-muted font-bold uppercase tracking-wider">
+    <View style={{ marginBottom: 14 }}>
+      <Text
+        style={{
+          color: C.muted,
+          fontSize: 11,
+          fontWeight: "700",
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+          marginBottom: 8,
+          marginLeft: 4,
+        }}
+      >
         {label}
       </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor="#475569"
-        className="bg-surface2 rounded-2xl px-4 py-3.5 text-[14px] text-text border border-white/5"
-      />
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: C.surface2,
+          borderWidth: 1.5,
+          borderColor: focusedField === fieldKey ? C.indigo : C.dim,
+          borderRadius: 14,
+          paddingHorizontal: 14,
+          paddingVertical: Platform.OS === "ios" ? 14 : 10,
+          gap: 10,
+        }}
+      >
+        <Ionicons
+          name={iconName}
+          size={18}
+          color={focusedField === fieldKey ? C.indigo : C.muted}
+        />
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={C.muted}
+          onFocus={() => setFocusedField(fieldKey)}
+          onBlur={() => setFocusedField(null)}
+          style={{ flex: 1, color: C.text, fontSize: 15 }}
+        />
+      </View>
     </View>
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View className="flex-1 justify-end bg-black/60">
-        <View className="bg-bg rounded-t-[32px] p-7 space-y-5">
-          <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-[20px] font-extrabold text-text">
-              Generate New Bill
-            </Text>
+    <Modal visible={visible} animationType="none" transparent>
+      <Animated.View
+        entering={FadeIn.duration(200)}
+        style={{
+          flex: 1,
+          justifyContent: "flex-end",
+          backgroundColor: "rgba(0,0,0,0.65)",
+        }}
+      >
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <Animated.View
+          entering={SlideInDown.springify().damping(18).stiffness(140)}
+          style={{
+            backgroundColor: C.bg,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            padding: 24,
+            borderTopWidth: 1,
+            borderColor: C.dim,
+          }}
+        >
+          {/* handle */}
+          <View
+            style={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: C.dim,
+              alignSelf: "center",
+              marginBottom: 20,
+            }}
+          />
+
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 24,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  backgroundColor: "rgba(99,92,241,0.1)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={22}
+                  color={C.indigo}
+                />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: C.text }}>
+                Generate Bill
+              </Text>
+            </View>
             <Pressable
               onPress={onClose}
-              className="w-8 h-8 rounded-full bg-surface2 items-center justify-center"
+              hitSlop={12}
+              style={({ pressed }) => ({
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: pressed ? C.surface2 : C.surface,
+                alignItems: "center",
+                justifyContent: "center",
+              })}
             >
-              <Text className="text-muted font-bold">✕</Text>
+              <Ionicons name="close" size={18} color={C.muted} />
             </Pressable>
           </View>
 
@@ -285,27 +563,80 @@ function GenerateBillModal({
             "Meter Number or ID",
             meterId,
             setMeterId,
-            "e.g. MTR-12345 or UUID",
+            "e.g. MTR-12345",
+            "speedometer-outline",
+            "meter",
           )}
-          {field("Period Start", start, setStart, "YYYY-MM-DD")}
-          {field("Period End", end, setEnd, "YYYY-MM-DD")}
-          {field("Tax Rate (%)", taxRate, setTaxRate, "18")}
+          {field(
+            "Period Start",
+            start,
+            setStart,
+            "YYYY-MM-DD",
+            "calendar-outline",
+            "start",
+          )}
+          {field(
+            "Period End",
+            end,
+            setEnd,
+            "YYYY-MM-DD",
+            "calendar-outline",
+            "end",
+          )}
+          {field(
+            "Tax Rate (%)",
+            taxRate,
+            setTaxRate,
+            "18",
+            "calculator-outline",
+            "tax",
+          )}
 
           <Pressable
             onPress={handleGenerate}
             disabled={loading}
-            className="rounded-2xl p-4.5 items-center bg-indigo mt-2 active:opacity-80"
+            style={({ pressed }) => ({
+              borderRadius: 14,
+              overflow: "hidden",
+              opacity: loading ? 0.6 : 1,
+              marginTop: 8,
+              transform: [{ scale: pressed && !loading ? 0.97 : 1 }],
+              shadowColor: C.indigo,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.35,
+              shadowRadius: 14,
+              elevation: 10,
+            })}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text className="text-white font-extrabold text-[15px]">
-                ⚡ Process Invoice
-              </Text>
-            )}
+            <LinearGradient
+              colors={[C.indigo, C.violet]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                paddingVertical: 18,
+                borderRadius: 14,
+                alignItems: "center",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="flash" size={18} color="#fff" />
+                  <Text
+                    style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}
+                  >
+                    Process Invoice
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
           </Pressable>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -329,6 +660,7 @@ export default function AdminBillingScreen() {
   const [stats, setStats] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 500);
@@ -345,15 +677,12 @@ export default function AdminBillingScreen() {
         const [billRes, statsRes] = await Promise.all([
           apiRequest<any>(
             `/api/billing?limit=100${debouncedSearch ? `&search=${debouncedSearch}` : ""}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
+            { headers: { Authorization: `Bearer ${token}` } },
           ),
           apiRequest<any>("/api/dashboard/stats", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
-
         setReports(
           Array.isArray(billRes.data) ? billRes.data : billRes.data.data || [],
         );
@@ -373,83 +702,314 @@ export default function AdminBillingScreen() {
   }, [load]);
 
   const listHeader = () => (
-    <View className="px-5 pb-5">
-      <View className="mb-6">
+    <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+      {/* search */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: C.surface2,
+          borderWidth: 1.5,
+          borderColor: searchFocused ? C.indigo : C.dim,
+          borderRadius: 14,
+          paddingHorizontal: 14,
+          paddingVertical: Platform.OS === "ios" ? 14 : 10,
+          gap: 10,
+          marginBottom: 20,
+        }}
+      >
+        <Ionicons
+          name="search-outline"
+          size={18}
+          color={searchFocused ? C.indigo : C.muted}
+        />
         <TextInput
           placeholder="Search by name or meter..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={C.muted}
           value={search}
           onChangeText={setSearch}
-          className="bg-surface2 rounded-2xl px-5 py-3.5 text-text text-sm border border-white/5 mb-6"
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          style={{ flex: 1, color: C.text, fontSize: 15 }}
         />
-
-        {stats && (
-          <>
-            <View className="flex-row space-x-3 mb-6">
-              <View className="flex-1 bg-surface rounded-[24px] p-5 shadow-sm border-l-4 border-indigo">
-                <Text className="text-[10px] text-muted font-bold uppercase">
-                  Revenue
-                </Text>
-                <Text className="text-[20px] font-extrabold text-text mt-1">
-                  {fmtCcy(stats.totalRevenue)}
-                </Text>
-              </View>
-              <View className="flex-1 bg-surface rounded-[24px] p-5 shadow-sm border-l-4 border-emerald">
-                <Text className="text-[10px] text-muted font-bold uppercase">
-                  Consumption
-                </Text>
-                <Text className="text-[20px] font-extrabold text-text mt-1">
-                  {(stats.totalRevenue / 10).toFixed(0)}k{" "}
-                  <Text className="text-[10px] text-muted font-normal">
-                    kWh
-                  </Text>
-                </Text>
-              </View>
-            </View>
-
-            {stats.monthlyStats && (
-              <BarChart
-                data={stats.monthlyStats}
-                title="Collection Trend (Board-Wise)"
-              />
-            )}
-          </>
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch("")} hitSlop={8}>
+            <Ionicons name="close-circle" size={18} color={C.muted} />
+          </Pressable>
         )}
       </View>
-      <Text className="text-[18px] font-extrabold text-text mb-4">
-        Latest Reports
-      </Text>
+
+      {/* stat cards */}
+      {stats && (
+        <>
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: C.surface,
+                borderRadius: 18,
+                padding: 18,
+                borderWidth: 1,
+                borderColor: C.dim,
+                borderLeftWidth: 3,
+                borderLeftColor: C.indigo,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <Ionicons name="wallet-outline" size={16} color={C.indigo} />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: C.muted,
+                    fontWeight: "700",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Revenue
+                </Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "800",
+                  color: C.text,
+                  letterSpacing: -0.5,
+                }}
+              >
+                {fmtCcy(stats.totalRevenue)}
+              </Text>
+            </View>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: C.surface,
+                borderRadius: 18,
+                padding: 18,
+                borderWidth: 1,
+                borderColor: C.dim,
+                borderLeftWidth: 3,
+                borderLeftColor: C.emerald,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <Ionicons name="flash-outline" size={16} color={C.emerald} />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: C.muted,
+                    fontWeight: "700",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Consumption
+                </Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "800",
+                  color: C.text,
+                  letterSpacing: -0.5,
+                }}
+              >
+                {(stats.totalRevenue / 10).toFixed(0)}k{" "}
+                <Text
+                  style={{ fontSize: 12, color: C.muted, fontWeight: "400" }}
+                >
+                  kWh
+                </Text>
+              </Text>
+            </View>
+          </View>
+
+          {stats.monthlyStats && (
+            <BarChart data={stats.monthlyStats} title="Collection Trend" />
+          )}
+        </>
+      )}
+
+      {/* section title */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 4,
+        }}
+      >
+        <View
+          style={{
+            width: 4,
+            height: 18,
+            borderRadius: 2,
+            backgroundColor: C.indigo,
+          }}
+        />
+        <Text style={{ fontSize: 18, fontWeight: "800", color: C.text }}>
+          Latest Reports
+        </Text>
+        <View
+          style={{
+            backgroundColor: C.surface2,
+            borderRadius: 8,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            marginLeft: 8,
+          }}
+        >
+          <Text style={{ color: C.muted, fontSize: 11, fontWeight: "700" }}>
+            {reports.length}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-bg">
-      <View className="flex-row items-center px-5 pt-6 pb-4">
-        <Text className="text-[26px] font-extrabold text-text flex-1 tracking-tight">
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["bottom"]}>
+      {/* ── Header ── */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 20,
+          paddingTop: 12,
+          paddingBottom: 12,
+        }}
+      >
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 26,
+            fontWeight: "800",
+            color: C.text,
+            letterSpacing: -0.5,
+          }}
+        >
           Billing
         </Text>
         <Pressable
           onPress={() => setGenerateModal(true)}
-          className="bg-indigo rounded-2xl px-5 py-2.5 shadow-lg shadow-indigo/20"
+          style={({ pressed }) => ({
+            borderRadius: 14,
+            overflow: "hidden",
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+            shadowColor: C.indigo,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 10,
+            elevation: 8,
+          })}
         >
-          <Text className="text-white font-bold text-[14px]">+ Generate</Text>
+          <LinearGradient
+            colors={[C.indigo, C.violet]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 18,
+              paddingVertical: 12,
+              borderRadius: 14,
+            }}
+          >
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+              Generate
+            </Text>
+          </LinearGradient>
         </Pressable>
       </View>
 
+      {/* ── Content ── */}
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#6366f1" />
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <Animated.View entering={ZoomIn.springify()}>
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 20,
+                backgroundColor: "rgba(99,92,241,0.08)",
+                borderWidth: 1,
+                borderColor: "rgba(99,92,241,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <ActivityIndicator size="large" color={C.indigo} />
+            </View>
+          </Animated.View>
+          <Text style={{ color: C.muted, fontSize: 13 }}>
+            Loading billing data…
+          </Text>
         </View>
       ) : error ? (
-        <View className="flex-1 items-center justify-center p-6 space-y-4">
-          <Text className="text-rose text-center text-[15px] font-medium leading-5">
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 20,
+              backgroundColor: "rgba(244,63,94,0.08)",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Ionicons name="cloud-offline-outline" size={32} color={C.rose} />
+          </View>
+          <Text
+            style={{
+              color: C.rose,
+              textAlign: "center",
+              fontSize: 15,
+              fontWeight: "500",
+              lineHeight: 22,
+              marginBottom: 20,
+            }}
+          >
             {error}
           </Text>
           <Pressable
             onPress={() => load()}
-            className="bg-surface2 rounded-2xl px-8 py-3.5"
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? C.surface2 : C.surface,
+              borderRadius: 14,
+              paddingHorizontal: 28,
+              paddingVertical: 14,
+              borderWidth: 1,
+              borderColor: C.dim,
+            })}
           >
-            <Text className="text-text font-bold">Retry</Text>
+            <Text style={{ color: C.text, fontWeight: "700" }}>Retry</Text>
           </Pressable>
         </View>
       ) : (
@@ -462,17 +1022,32 @@ export default function AdminBillingScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load(true)}
-              tintColor="#6366f1"
+              tintColor={C.indigo}
             />
           }
           renderItem={({ item }) => (
-            <View className="px-5">
+            <View style={{ paddingHorizontal: 20 }}>
               <BillCard
                 report={item}
                 onDetail={(cid) => router.push(`/admin-consumer/${cid}` as any)}
               />
             </View>
           )}
+          ListEmptyComponent={
+            <View style={{ alignItems: "center", padding: 40 }}>
+              <Ionicons name="receipt-outline" size={48} color={C.dim} />
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 15,
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
+                No billing reports found
+              </Text>
+            </View>
+          }
           showsVerticalScrollIndicator={false}
         />
       )}

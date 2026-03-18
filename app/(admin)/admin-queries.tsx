@@ -1,8 +1,3 @@
-/**
- * Admin — Customer Queries Management
- * View, filter, and reply to consumer queries.
- * Roles: SUPER_ADMIN, STATE_ADMIN, BOARD_ADMIN, SUPPORT_AGENT
- */
 import { useStableToken } from "@/hooks/useStableToken";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -21,10 +16,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  SlideInDown,
+  ZoomIn,
+} from "react-native-reanimated";
 import { apiRequest } from "@/api/common/apiRequest";
 import { ROLE_TYPE } from "@/types/api.types";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
-
 import {
   useAdminQueryStore,
   type QueryStatus,
@@ -32,23 +34,58 @@ import {
   STATUS_META,
 } from "@/stores/useAdminQueryStore";
 
-export const FILTERS: { label: string; value: QueryStatus | "ALL" }[] = [
-  { label: "All", value: "ALL" },
-  { label: "Pending", value: "PENDING" },
-  { label: "AI ✦", value: "AI_REVIEWED" },
-  { label: "Done", value: "RESOLVED" },
+const C = {
+  bg: "#040a1a",
+  surface: "#0b1a2f",
+  surface2: "#142840",
+  indigo: "#635cf1",
+  violet: "#7c3aed",
+  blue: "#38bdf8",
+  emerald: "#22c55e",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  text: "#e8f0fa",
+  muted: "#5e7490",
+  dim: "#1a2d42",
+};
+
+export const FILTERS: {
+  label: string;
+  value: QueryStatus | "ALL";
+  iconName: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { label: "All", value: "ALL", iconName: "layers-outline" },
+  { label: "Pending", value: "PENDING", iconName: "time-outline" },
+  { label: "AI ✦", value: "AI_REVIEWED", iconName: "sparkles-outline" },
+  { label: "Resolved", value: "RESOLVED", iconName: "checkmark-circle-outline" },
 ];
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
 
 export function StatusBadge({ status }: { status: QueryStatus }) {
   const m = STATUS_META[status];
+  const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+    PENDING: "time-outline",
+    AI_REVIEWED: "sparkles-outline",
+    RESOLVED: "checkmark-circle-outline",
+    REJECTED: "close-circle-outline",
+  };
   return (
     <View
-      className="rounded-full px-2.5 py-0.5"
-      style={{ backgroundColor: m.bg }}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        backgroundColor: m.bg,
+        borderWidth: 1,
+        borderColor: `${m.fg}20`,
+      }}
     >
-      <Text className="text-[11px] font-bold" style={{ color: m.fg }}>
+      <Ionicons name={iconMap[status] ?? "ellipse"} size={12} color={m.fg} />
+      <Text style={{ fontSize: 11, fontWeight: "700", color: m.fg }}>
         {m.label}
       </Text>
     </View>
@@ -60,67 +97,170 @@ export function StatusBadge({ status }: { status: QueryStatus }) {
 function QueryCard({
   query,
   onPress,
+  index = 0,
 }: {
   query: CustomerQuery;
   onPress: () => void;
+  index?: number;
 }) {
   const needsAction =
     query.status === "PENDING" || query.status === "AI_REVIEWED";
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`rounded-[18px] p-4 mb-2.5 border-l-[3px] space-y-2 bg-surface ${
-        needsAction ? "border-amber" : "border-dim"
-      }`}
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "#273549" : "#1e293b",
-      })}
-    >
-      {/* Consumer + status row */}
-      <View className="flex-row justify-between items-start">
-        <View className="flex-1 mr-2">
-          <Text className="text-xs text-muted font-semibold">
-            {query.consumer?.name ?? query.consumerId.slice(0, 8)}
-          </Text>
-          <Text
-            className="text-sm text-text font-semibold mt-0.5"
-            numberOfLines={2}
-          >
-            {query.queryText}
-          </Text>
-        </View>
-        <StatusBadge status={query.status} />
-      </View>
 
-      {/* AI tag */}
-      {query.aiCategory ? (
-        <View className="flex-row items-center space-x-1.5">
-          <View className="bg-indigo/10 rounded-lg px-2 py-0.5">
-            <Text className="text-[11px] text-indigo font-semibold">
-              ✦ {query.aiCategory}
-              {query.aiConfidence != null
-                ? `  ${(query.aiConfidence * 100).toFixed(0)}%`
-                : ""}
+  return (
+    <Animated.View entering={FadeInDown.duration(350).delay(80 + index * 30)}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? C.surface2 : C.surface,
+          borderRadius: 18,
+          padding: 18,
+          marginBottom: 10,
+          borderWidth: 1,
+          borderColor: C.dim,
+          borderLeftWidth: 3,
+          borderLeftColor: needsAction ? C.amber : C.dim,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
+      >
+        {/* header */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: 10,
+          }}
+        >
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 4,
+              }}
+            >
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 9,
+                  backgroundColor: `${C.blue}14`,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{ color: C.blue, fontSize: 12, fontWeight: "800" }}
+                >
+                  {(query.consumer?.name ?? query.consumerId)?.[0]?.toUpperCase() ?? "?"}
+                </Text>
+              </View>
+              <Text style={{ color: C.muted, fontSize: 12, fontWeight: "600" }}>
+                {query.consumer?.name ?? query.consumerId.slice(0, 8)}
+              </Text>
+            </View>
+            <Text
+              style={{
+                color: C.text,
+                fontSize: 14,
+                fontWeight: "600",
+                lineHeight: 20,
+                marginLeft: 36,
+              }}
+              numberOfLines={2}
+            >
+              {query.queryText}
             </Text>
           </View>
+          <StatusBadge status={query.status} />
         </View>
-      ) : null}
 
-      {/* Reply preview */}
-      {query.adminReply ? (
-        <Text className="text-xs text-muted italic" numberOfLines={1}>
-          ↳ {query.adminReply}
-        </Text>
-      ) : null}
+        {/* AI tag */}
+        {query.aiCategory && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 10,
+              marginLeft: 36,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                backgroundColor: "rgba(99,92,241,0.08)",
+                borderWidth: 1,
+                borderColor: "rgba(99,92,241,0.15)",
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}
+            >
+              <Ionicons name="sparkles" size={12} color={C.indigo} />
+              <Text
+                style={{ color: C.indigo, fontSize: 11, fontWeight: "600" }}
+              >
+                {query.aiCategory}
+                {query.aiConfidence != null
+                  ? ` · ${(query.aiConfidence * 100).toFixed(0)}%`
+                  : ""}
+              </Text>
+            </View>
+          </View>
+        )}
 
-      <Text className="text-[11px] text-dim">
-        {new Date(query.createdAt).toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}
-      </Text>
-    </Pressable>
+        {/* Reply preview */}
+        {query.adminReply && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 6,
+              backgroundColor: C.surface2,
+              borderRadius: 10,
+              padding: 10,
+              marginBottom: 10,
+              marginLeft: 36,
+            }}
+          >
+            <Ionicons
+              name="return-down-forward-outline"
+              size={12}
+              color={C.muted}
+              style={{ marginTop: 2 }}
+            />
+            <Text
+              style={{ color: C.muted, fontSize: 12, flex: 1, fontStyle: "italic" }}
+              numberOfLines={2}
+            >
+              {query.adminReply}
+            </Text>
+          </View>
+        )}
+
+        {/* date */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            marginLeft: 36,
+          }}
+        >
+          <Ionicons name="calendar-outline" size={11} color={C.dim} />
+          <Text style={{ fontSize: 11, color: C.dim }}>
+            {new Date(query.createdAt).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -141,6 +281,7 @@ function ReplyModal({
 }) {
   const [reply, setReply] = useState("");
   const [status, setStatus] = useState<QueryStatus>("RESOLVED");
+  const [replyFocused, setReplyFocused] = useState(false);
 
   useEffect(() => {
     if (query) {
@@ -151,104 +292,323 @@ function ReplyModal({
 
   if (!query) return null;
 
+  const statusOptions: {
+    value: QueryStatus;
+    label: string;
+    color: string;
+    iconName: keyof typeof Ionicons.glyphMap;
+  }[] = [
+    {
+      value: "RESOLVED",
+      label: "Resolve",
+      color: C.emerald,
+      iconName: "checkmark-circle-outline",
+    },
+    {
+      value: "REJECTED",
+      label: "Reject",
+      color: C.rose,
+      iconName: "close-circle-outline",
+    },
+  ];
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       transparent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 justify-end bg-black/50"
+      <Animated.View
+        entering={FadeIn.duration(200)}
+        style={{
+          flex: 1,
+          justifyContent: "flex-end",
+          backgroundColor: "rgba(0,0,0,0.65)",
+        }}
       >
-        <View className="bg-bg rounded-t-[28px] p-6 space-y-4 max-h-[90%]">
-          {/* Header */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-lg font-extrabold text-text">
-              Reply to Query
-            </Text>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text className="text-2xl text-muted">✕</Text>
-            </Pressable>
-          </View>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Animated.View
+            entering={SlideInDown.springify().damping(18).stiffness(140)}
+            style={{
+              backgroundColor: C.bg,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              padding: 24,
+              borderTopWidth: 1,
+              borderColor: C.dim,
+              maxHeight: "90%",
+            }}
+          >
+            {/* handle */}
+            <View
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: C.dim,
+                alignSelf: "center",
+                marginBottom: 20,
+              }}
+            />
 
-          {/* Query text */}
-          <View className="bg-surface rounded-xl p-3">
-            <Text className="text-xs text-muted mb-1">
-              {query.consumer?.name ?? "Consumer"}
-            </Text>
-            <Text className="text-[13px] text-text">{query.queryText}</Text>
-          </View>
+            {/* header */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    backgroundColor: "rgba(99,92,241,0.1)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={22} color={C.indigo} />
+                </View>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: C.text }}>
+                  Reply
+                </Text>
+              </View>
+              <Pressable
+                onPress={onClose}
+                hitSlop={12}
+                style={({ pressed }) => ({
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: pressed ? C.surface2 : C.surface,
+                  alignItems: "center",
+                  justifyContent: "center",
+                })}
+              >
+                <Ionicons name="close" size={18} color={C.muted} />
+              </Pressable>
+            </View>
 
-          {/* Status picker */}
-          <View>
-            <Text className="text-xs text-muted font-semibold mb-2 uppercase">
+            {/* query text */}
+            <View
+              style={{
+                backgroundColor: C.surface,
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 18,
+                borderWidth: 1,
+                borderColor: C.dim,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 8,
+                }}
+              >
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 8,
+                    backgroundColor: `${C.blue}14`,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: C.blue, fontSize: 10, fontWeight: "800" }}>
+                    {(query.consumer?.name ?? "C")[0].toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={{ color: C.muted, fontSize: 12, fontWeight: "600" }}>
+                  {query.consumer?.name ?? "Consumer"}
+                </Text>
+              </View>
+              <Text
+                style={{ color: C.text, fontSize: 14, lineHeight: 21 }}
+              >
+                {query.queryText}
+              </Text>
+            </View>
+
+            {/* status picker */}
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+                marginBottom: 10,
+                marginLeft: 4,
+              }}
+            >
               Set Status
             </Text>
-            <View className="flex-row space-x-2">
-              {(["RESOLVED", "REJECTED"] as QueryStatus[]).map((s) => {
-                const selected = status === s;
-                const m = STATUS_META[s];
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 10,
+                marginBottom: 18,
+              }}
+            >
+              {statusOptions.map((s) => {
+                const selected = status === s.value;
                 return (
                   <Pressable
-                    key={s}
-                    onPress={() => setStatus(s)}
-                    className="flex-1 rounded-xl p-2.5 items-center border-[1.5px]"
-                    style={{
-                      backgroundColor: selected ? m.bg : "#1e293b",
-                      borderColor: selected ? m.fg : "#475569",
-                    }}
+                    key={s.value}
+                    onPress={() => setStatus(s.value)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      borderRadius: 14,
+                      paddingVertical: 14,
+                      borderWidth: 1.5,
+                      backgroundColor: selected
+                        ? `${s.color}10`
+                        : C.surface,
+                      borderColor: selected ? s.color : C.dim,
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
+                    })}
                   >
+                    <Ionicons
+                      name={s.iconName}
+                      size={18}
+                      color={selected ? s.color : C.muted}
+                    />
                     <Text
-                      className="text-[13px] font-bold"
-                      style={{ color: selected ? m.fg : "#94a3b8" }}
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "700",
+                        color: selected ? s.color : C.muted,
+                      }}
                     >
-                      {m.label}
+                      {s.label}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
-          </View>
 
-          {/* Reply input */}
-          <View>
-            <Text className="text-xs text-muted font-semibold mb-2 uppercase">
+            {/* reply input */}
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+                marginBottom: 10,
+                marginLeft: 4,
+              }}
+            >
               Reply Message
             </Text>
-            <TextInput
-              value={reply}
-              onChangeText={setReply}
-              placeholder="Type your reply…"
-              placeholderTextColor="#475569"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              className={`bg-surface rounded-xl p-3.5 text-sm text-text min-h-[110px] border ${
-                reply.trim() ? "border-indigo/50" : "border-dim"
-              }`}
-            />
-          </View>
+            <View
+              style={{
+                backgroundColor: C.surface2,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: replyFocused
+                  ? C.indigo
+                  : reply.trim()
+                    ? "rgba(99,92,241,0.3)"
+                    : C.dim,
+                marginBottom: 20,
+              }}
+            >
+              <TextInput
+                value={reply}
+                onChangeText={setReply}
+                placeholder="Type your reply…"
+                placeholderTextColor={C.muted}
+                onFocus={() => setReplyFocused(true)}
+                onBlur={() => setReplyFocused(false)}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                style={{
+                  color: C.text,
+                  fontSize: 15,
+                  padding: 16,
+                  minHeight: 110,
+                }}
+              />
+            </View>
 
-          {/* Submit */}
-          <Pressable
-            onPress={() => reply.trim() && onSubmit(reply.trim(), status)}
-            disabled={submitting || !reply.trim()}
-            className={`rounded-2xl p-4 items-center ${
-              reply.trim() ? "bg-indigo" : "bg-dim"
-            } ${submitting ? "opacity-60" : "opacity-100"}`}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text className="text-white font-extrabold text-[15px]">
-                Submit Reply
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+            {/* submit */}
+            <Pressable
+              onPress={() => reply.trim() && onSubmit(reply.trim(), status)}
+              disabled={submitting || !reply.trim()}
+              style={({ pressed }) => ({
+                borderRadius: 14,
+                overflow: "hidden",
+                opacity: submitting || !reply.trim() ? 0.5 : 1,
+                transform: [
+                  { scale: pressed && !submitting && reply.trim() ? 0.97 : 1 },
+                ],
+                shadowColor: C.indigo,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: reply.trim() ? 0.35 : 0,
+                shadowRadius: 14,
+                elevation: reply.trim() ? 10 : 0,
+              })}
+            >
+              <LinearGradient
+                colors={
+                  reply.trim() ? [C.indigo, C.violet] : [C.dim, C.dim]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingVertical: 18,
+                  borderRadius: 14,
+                  alignItems: "center",
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="send" size={18} color="#fff" />
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "700",
+                        fontSize: 16,
+                      }}
+                    >
+                      Submit Reply
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 }
@@ -287,20 +647,17 @@ export default function AdminQueriesScreen() {
       try {
         const token = await getToken();
         if (!token) throw new Error("Authentication token missing");
-
         const params =
           filterRef.current !== "ALL" ? `?status=${filterRef.current}` : "";
         const res = await apiRequest<any>(`/api/support${params}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         const inner = res.data;
         const data: CustomerQuery[] = Array.isArray(inner)
           ? inner
           : Array.isArray(inner?.data)
             ? inner.data
             : [];
-
         setQueries(data);
       } catch (e: any) {
         setError(e?.message ?? "Failed to load queries.");
@@ -309,7 +666,7 @@ export default function AdminQueriesScreen() {
         setRefreshing(false);
       }
     },
-    [getToken],
+    [getToken]
   );
 
   useEffect(() => {
@@ -324,7 +681,6 @@ export default function AdminQueriesScreen() {
     try {
       const token = await getToken();
       if (!token) return;
-
       if (newStatus === "REJECTED") {
         await rejectQuery(token, selected.id);
       } else {
@@ -336,7 +692,7 @@ export default function AdminQueriesScreen() {
     } catch (e: any) {
       Alert.alert(
         "Error",
-        e?.response?.data?.error ?? "Failed to submit reply.",
+        e?.response?.data?.error ?? "Failed to submit reply."
       );
     } finally {
       setSubmitting(false);
@@ -347,70 +703,227 @@ export default function AdminQueriesScreen() {
     filter === "ALL" ? queries : queries.filter((q) => q.status === filter);
 
   return (
-    <SafeAreaView className="flex-1 bg-bg">
-      {/* Header */}
-      <View className="flex-row items-center px-5 pt-4 pb-3 space-x-3">
-        <View className="flex-1">
-          <Text className="text-[22px] font-extrabold text-text">
-            Customer Queries
-          </Text>
-          <Text className="text-xs text-muted mt-0.5">
-            {filtered.length}{" "}
-            {filter === "ALL"
-              ? "total"
-              : STATUS_META[filter as QueryStatus]?.label.toLowerCase() || ""}
-          </Text>
-        </View>
-      </View>
-
-      {/* Filter bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["bottom"]}>
+      {/* ── Header ── */}
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(100)}
+        style={{
           paddingHorizontal: 20,
-          gap: 12,
-          paddingBottom: 12,
+          paddingTop: 12,
+          paddingBottom: 8,
         }}
       >
-        {FILTERS.map((f) => {
-          const active = filter === f.value;
-          return (
-            <Pressable
-              key={f.value}
-              onPress={() => setFilter(f.value)}
-              className={`rounded-full px-4 py-2 ${active ? "bg-indigo" : "bg-surface"}`}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View>
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: "800",
+                color: C.text,
+                letterSpacing: -0.5,
+              }}
             >
-              <Text
-                className={`text-[13px] font-bold ${active ? "text-white" : "text-muted"}`}
-              >
-                {f.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+              Queries
+            </Text>
+            <Text style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>
+              {filtered.length}{" "}
+              {filter === "ALL"
+                ? "total"
+                : STATUS_META[filter as QueryStatus]?.label.toLowerCase() ?? ""}
+            </Text>
+          </View>
+          <View
+            style={{
+              backgroundColor: C.surface,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderWidth: 1,
+              borderColor: C.dim,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Ionicons name="chatbubbles-outline" size={14} color={C.indigo} />
+            <Text style={{ color: C.indigo, fontSize: 13, fontWeight: "700" }}>
+              {queries.filter((q) => q.status === "PENDING").length} pending
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
 
-      {/* Content */}
+      {/* ── Filter bar ── */}
+      <Animated.View entering={FadeInDown.duration(400).delay(180)}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            gap: 8,
+            paddingBottom: 14,
+            paddingTop: 4,
+          }}
+        >
+          {FILTERS.map((f) => {
+            const active = filter === f.value;
+            return (
+              <Pressable
+                key={f.value}
+                onPress={() => setFilter(f.value)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  backgroundColor: active
+                    ? C.indigo
+                    : pressed
+                      ? C.surface2
+                      : C.surface,
+                  borderWidth: active ? 0 : 1,
+                  borderColor: C.dim,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
+              >
+                <Ionicons
+                  name={f.iconName}
+                  size={14}
+                  color={active ? "#fff" : C.muted}
+                />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: active ? "#fff" : C.muted,
+                  }}
+                >
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Animated.View>
+
+      {/* ── Content ── */}
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#6366f1" />
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <Animated.View entering={ZoomIn.springify()}>
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 20,
+                backgroundColor: "rgba(99,92,241,0.08)",
+                borderWidth: 1,
+                borderColor: "rgba(99,92,241,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <ActivityIndicator size="large" color={C.indigo} />
+            </View>
+          </Animated.View>
+          <Text style={{ color: C.muted, fontSize: 13 }}>
+            Loading queries…
+          </Text>
         </View>
       ) : error ? (
-        <View className="flex-1 items-center justify-center p-6 space-y-3">
-          <Text className="text-rose text-center text-sm">{error}</Text>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 20,
+              backgroundColor: "rgba(244,63,94,0.08)",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Ionicons name="chatbubbles-outline" size={32} color={C.rose} />
+          </View>
+          <Text
+            style={{
+              color: C.rose,
+              textAlign: "center",
+              fontSize: 14,
+              lineHeight: 21,
+              marginBottom: 20,
+            }}
+          >
+            {error}
+          </Text>
           <Pressable
             onPress={() => load()}
-            className="bg-indigo rounded-xl px-6 py-2.5"
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? C.surface2 : C.surface,
+              borderRadius: 14,
+              paddingHorizontal: 28,
+              paddingVertical: 14,
+              borderWidth: 1,
+              borderColor: C.dim,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            })}
           >
-            <Text className="text-white font-bold">Retry</Text>
+            <Ionicons name="refresh" size={16} color={C.text} />
+            <Text style={{ color: C.text, fontWeight: "700" }}>Retry</Text>
           </Pressable>
         </View>
       ) : filtered.length === 0 ? (
-        <View className="flex-1 items-center justify-center space-y-2">
-          <Text className="text-4xl">💬</Text>
-          <Text className="text-text text-base font-bold">No queries</Text>
-          <Text className="text-muted text-[13px]">
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 24,
+              backgroundColor: "rgba(56,189,248,0.06)",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Ionicons name="chatbubbles-outline" size={40} color={C.dim} />
+          </View>
+          <Text
+            style={{
+              color: C.text,
+              fontSize: 16,
+              fontWeight: "700",
+              marginBottom: 6,
+            }}
+          >
+            No queries
+          </Text>
+          <Text style={{ color: C.muted, fontSize: 13, textAlign: "center" }}>
             {filter !== "ALL" ? "Try a different filter" : "All clear!"}
           </Text>
         </View>
@@ -423,12 +936,13 @@ export default function AdminQueriesScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load(true)}
-              tintColor="#6366f1"
+              tintColor={C.indigo}
             />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <QueryCard
               query={item}
+              index={index}
               onPress={() => {
                 setSelected(item);
                 setModalVisible(true);
@@ -439,7 +953,6 @@ export default function AdminQueriesScreen() {
         />
       )}
 
-      {/* Reply Modal */}
       <ReplyModal
         query={selected}
         visible={modalVisible}
