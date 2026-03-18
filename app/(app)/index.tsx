@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { useCurrentRole } from '@/hooks/useRoleBasedView';
-import { useRouter } from 'expo-router';
-import { ROLE_TYPE } from '@/types/api.types';
+import { useEffect } from "react";
+import { useCurrentRole } from "@/hooks/useRoleBasedView";
+import { useRouter } from "expo-router";
+import { ROLE_TYPE } from "@/types/api.types";
 
 export default function AppEntryRedirect() {
   const role = useCurrentRole();
@@ -9,15 +9,14 @@ export default function AppEntryRedirect() {
 
   useEffect(() => {
     if (!role) return;
-    
+
     // Redirect cleanly based on role
-    if (role === 'CONSUMER') {
-      router.replace('/(app)/dashboard');
+    if (role === "CONSUMER") {
+      router.replace("/(consumer)/dashboard");
     } else {
-      router.replace('/(app)/admin-dashboard');
+      router.replace("/(admin)/admin-dashboard");
     }
   }, [role, router]);
 
   return null;
 }
-
