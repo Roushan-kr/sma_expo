@@ -13,6 +13,7 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 
 import { useAuthStore } from "@/stores/useAuthStore";
 import { RoleProvider } from "@/context/RoleContext";
+import AIChatBot from "@/components/AIChatBot";
 
 const C = {
   bg: "#040a1a",
@@ -185,6 +186,7 @@ export default function ConsumerLayout() {
             }}
           />
         </Drawer>
+        {profile && <AIChatBot role="CONSUMER" userId={(profile as any).id} />}
       </GestureHandlerRootView>
     </RoleProvider>
   );

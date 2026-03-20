@@ -14,6 +14,7 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { RoleProvider } from "@/context/RoleContext";
 import { Permission, hasPermission } from "@/constants/permissions";
+import AIChatBot from "@/components/AIChatBot";
 
 const C = {
   bg: "#040a1a",
@@ -194,6 +195,7 @@ export default function AdminLayout() {
             options={{ drawerItemStyle: { display: "none" }, title: "Meter Details" }}
           />
         </Drawer>
+        {profile && <AIChatBot role={currentRole || 'ADMIN'} userId={(profile as any).id} />}
       </GestureHandlerRootView>
     </RoleProvider>
   );
