@@ -1,50 +1,51 @@
-# Welcome to your Expo app 👋
+# Smart Meter Management Frontend (SMA)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This project is the cross-platform mobile and web application for the Smart Meter Management platform. It is built using **React Native** and **Expo Router**.
 
-## Get started
+## 🛠 Tech Stack
 
-1. Install dependencies
+- **Framework**: [React Native](https://reactnative.dev/) / [Expo](https://expo.dev/)
+- **Styling**: [NativeWind v4](https://www.nativewind.dev/) (Tailwind CSS) & [React Native Paper](https://callstack.github.io/react-native-paper/)
+- **Authentication**: [Clerk](https://clerk.dev/)
+- **State Management**: [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction)
+- **Data Fetching**: Axios
+- **Data Visualization**: [Victory Native](https://formidable.com/open-source/victory/)
 
-   ```bash
-   npm install
-   ```
+## 🚀 Getting Started
 
-2. Start the app
+### Prerequisites
 
-   ```bash
-   npx expo start
-   ```
+Ensure you have **Node.js** and **pnpm** installed on your system.
 
-In the output, you'll find options to open the app in a
+### Installation
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+Navigate to the project directory and install dependencies:
 ```bash
-npm run reset-project
+cd d:/PTU/sma_exp/sma
+pnpm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Running the App
 
-## Learn more
+Start the development server:
+```bash
+pnpm start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+You can also run directly on specific platforms:
+- **Android**: `pnpm android` 
+- **iOS**: `pnpm ios`
+- **Web**: `pnpm web`
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 📂 Project Structure
 
-## Join the community
+- `/app`: Expo Router file-based routing.
+- `/components`: Reusable UI components.
+- `/context`: Global contexts (e.g. Auth).
+- `/hooks` & `/stores`: Shared state management and reusable logic.
+- `/api`: Network layer for fetching from the `smartMettr` backend.
+- `/lib`: Helper utilities and configurations.
 
-Join our community of developers creating universal apps.
+## 🔒 Authentication & Theming
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This application implements secure authentication via Clerk integration. The UI comprises modern layouts featuring React Native Paper components configured correctly to fix cross-platform scrolling within `PaperProvider`.
